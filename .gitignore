@@ -1,0 +1,25 @@
+# .gitignore, created MM, 2013-03-06
+
+.idea
+*.classpath
+*.iml
+*.project
+.venv
+ideaj
+out/
+*.pyc
+build/
+*.dmg
+*.iso
+*.rar
+*.zip
+.metadata/
+*.log
+*.sqlite
+*.swp
+.DS_Store
+dist/
+requirements.txt.freeze
+src/sentinel.egg-info/
+
+.elasticbeanstalk/

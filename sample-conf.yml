@@ -1,0 +1,15 @@
+# Example configuration file.
+
+keys:
+    private: /home/bob/.ssh/secret.pem
+    public: /home/bob/.ssh/secret.pub
+    secrets: /opt/store/
+
+store: /home/bob/encrypt/stores.csv
+
+# Where to store the encrypted file; the folder MUST already exist and the user
+# have write permissions.
+out: /data/store/enc
+
+# Whether to securely delete the original plaintext file.
+shred: false
