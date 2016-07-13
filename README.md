@@ -13,6 +13,8 @@ Uses OpenSSL library to encrypt a file using a private/public key pair and a one
 
 A full description of the process can be found [here][how-to].
 
+See also this [blog entry](https://codetrips.com/2016/07/13/filecrypt-openssl-file-encryption/) for more details.
+
 # configuration
 
 This uses a YAML file to describe the configuration; by default it assumes it is in
