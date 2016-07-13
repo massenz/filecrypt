@@ -1,0 +1,5 @@
+# Requirements file for filecrypt.
+# Created by M. Massenzio (c) 2016.
+
+PyYAML==3.11
+sh==1.11
