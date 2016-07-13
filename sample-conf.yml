@@ -13,3 +13,15 @@ out: /data/store/enc
 
 # Whether to securely delete the original plaintext file.
 shred: false
+
+# The logging section is entirely optional, and any of the fields below
+# can be omitted.  By default, logs at INFO level to stdout.
+#
+# See Python's logging module for details about the date format descriptor.
+# https://docs.python.org/2/howto/logging.html#logging-advanced-tutorial
+logging:
+  format: "%(asctime)s [%(levelname)-5s] %(message)s"
+  level: DEBUG
+  # The filename will always be appended to and named 'filecrypt.log'.
+  logdir: /var/log/filecrypt
+  datefmt: "%Y-%m-%d %H:%M:%S"

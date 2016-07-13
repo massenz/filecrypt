@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# @copyright: AlertAvert.com (c) 2015. All rights reserved.
+# @copyright: AlertAvert.com (c) 2016. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,10 @@
 # limitations under the License.
 
 """
-========
-Overview
-========
-
 Uses OpenSSL library to encrypt a file using a private/public key secret.
 
-A full description of the process can be found here:
-
-    https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst
+A full description of the process can be found at:
+https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst
 
 configuration
 -------------
@@ -48,17 +43,18 @@ The structure of the ``conf.yml`` file is as follows::
     shred: false
 
 The ``private``/``public`` keys are a key-pair generated using the ``openssl genrsa`` command; the
-encryption key used to actually encrypt the file will be created in the ``secrets`` folder,
-and afterward encrypted using the ``private`` key and stored in the location provided.
+encryption key used to actually encrypt the file will be created in a temporary location,
+and afterward encrypted using the ``public`` key and stored in the location provided and the
+temporary plaintext copy securely erased.
 
 The name will be ``pass-key-nnn.enc``, where ``nnn`` will be a random value between ``000``` and
 ``999``, that has not been already used for a file in that folder.
 
 The name of the secret passphrase can also be defined by the user, using the ``--secret`` option
-(specify the full path, it will still saved encrypted in the ``secrets`` folder):
+(specify the full path, it will **not** be modified):
 
-* if it does not exist it will be created, used for encryption, then encrypted and the plaintext
-version securely destroyed; OR
+* if it does not exist, a temporary one will be created, used for encryption, then encrypted and
+saved with the given filename, while the plaintext version securely destroyed; OR
 
 * if it is the name of an already existing file, it will be decrypted, used to encrypt the file,
 then left unchanged on disk.
@@ -84,20 +80,8 @@ usage is::
 
     filecrypt -f /opt/enc/conf.yml /data/store/201511_data.tar.gz
 
-will create an encrypted copy of the file to be stored as ``/data/store/201511_data.tar.gz.enc``,
-the original file to be securely destroyed (using ``shred``) and the new encryption key to be
-stored, encrypted in ``/opt/store/pass-key-778.enc``.
-
-A new line will be appended to ``/home/bob/encrypt/stores.csv``::
-
-    /data/store/201511_data.tar,pass-key-778.enc,/data/store/201511_data.tar.gz.enc
-
-
+See the ``README.md`` file for more details.
 """
-
-__author__ = 'Marco Massenzio'
-__email__ = 'marco@alertavert.com'
-
 import argparse
 from collections import namedtuple
 import logging
@@ -108,8 +92,7 @@ import sys
 from tempfile import mkstemp
 import yaml
 
-
-LOG_FORMAT = '%(asctime)s [%(levelname)-5s] %(message)s'
+__author__ = 'Marco Massenzio'
 
 
 def check_version():
@@ -123,26 +106,47 @@ Keypair = namedtuple('Keypair', 'private public')
 
 class EncryptConfiguration(object):
 
-    def __init__(self, conf_file, secret_file=None, workdir=None):
+    DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+    LOG_FORMAT = '%(asctime)s [%(levelname)-5s] %(message)s'
+
+    def __init__(self, conf_file, secret_file=None):
+        self.out = None
         self.private = None
         self.public = None
         self.secrets_dir = None
         self.secret = secret_file
-        self.store = None
         self.shred = None
-        self.out = workdir
+        self.store = None
+        self._log = logging.getLogger(self.__class__.__name__)
         self.parse_configuration_file(conf_file)
 
+    @property
+    def log(self):
+        return self._log
+
     def parse_configuration_file(self, conf_file):
-        logging.info("Reading configuration from '%s'", conf_file)
         with open(conf_file) as cfg:
             configs = yaml.load(cfg)
-        if not configs.get('keys'):
+
+        # First, let's get some logging going.
+        self._configure_logging(configs.get('logging') or dict())
+
+        keys = configs.get('keys')
+        if not keys:
+            self.log.error("The `keys:` section is required, cannot proceed without.")
             raise RuntimeError("Missing `keys` in {}".format(conf_file))
 
-        self.private = configs.get('keys').get('private')
-        self.public = configs.get('keys').get('public')
-        self.secrets_dir = configs.get('keys').get('secrets')
+        self.private = keys.get('private')
+        self.public = keys.get('public')
+        self.secrets_dir = keys.get('secrets')
+
+        if not os.path.isdir(self.secrets_dir):
+            self.log.warn("Directory '%s' does not exist, trying to create it", self.secrets_dir)
+            try:
+                os.makedirs(self.secrets_dir, mode=0o775)
+            except OSError as ex:
+                self.log.error("Cannot create directory '%s': %s", self.secrets_dir, ex)
+                raise RuntimeError(ex)
 
         # This contorsion is necessary due to the absence of a do-until construct in Python.
         while not self.secret:
@@ -155,11 +159,23 @@ class EncryptConfiguration(object):
 
         self.store = configs.get('store')
 
-        # If not specified via the --workdir, we will use the `out:` value.
-        # If that is missing too, the current directory is used.
-        if not self.out:
-            self.out = configs.get('out', os.getcwd())
+        # If the `out` key is not present, the current directory is used.
+        self.out = configs.get('out', os.getcwd())
+
+        # Unless otherwise specified, we will securely destroy the original plaintext file.
         self.shred = configs.get('shred', True)
+
+    def _configure_logging(self, log_config):
+        handler = logging.StreamHandler()
+        if 'logdir' in log_config:
+            handler = logging.FileHandler(os.path.join(log_config.get('logdir'), 'filecrypt.log'))
+        formatter = logging.Formatter(fmt=log_config.get('format', EncryptConfiguration.LOG_FORMAT),
+                                      datefmt=log_config.get('datefmt',
+                                                             EncryptConfiguration.DATE_FORMAT))
+        handler.setFormatter(formatter)
+        self._log.setLevel(log_config.get('level', 'INFO'))
+        self._log.addHandler(handler)
+        self.log.debug("Logging configuration complete")
 
 
 class FileEncryptor(object):
@@ -168,7 +184,7 @@ class FileEncryptor(object):
         By passing the encrypted file as the ``plain_file`` at creation, this class can also be
         used to **decrypt** the file, by calling ``decrypt()``.
     """
-    def __init__(self, secret_keyfile, plain_file, dest_dir=None):
+    def __init__(self, secret_keyfile, plain_file, dest_dir=None, log=None):
         """ Initializes an encryptor.
 
         :param secret_keyfile the full path of the encryption key
@@ -179,6 +195,8 @@ class FileEncryptor(object):
         self.secret = secret_keyfile
         self.plain_file = plain_file
         self.dest = dest_dir or os.path.dirname(plain_file)
+        self.outfile = os.path.join(self.dest, '{}.enc'.format(os.path.basename(self.plain_file)))
+        self._log = log or logging
 
     def encrypt(self):
         """Performs the encryption step.
@@ -204,18 +222,18 @@ class FileEncryptor(object):
             raise RuntimeError("Cannot encrypt {}: {}".format(self.plain_file, err_msg))
 
         try:
-            outfile = os.path.join(self.dest, '{}.enc'.format(self.plain_file))
-            with open(self.plain_file) as plain_file:
+            self._log.info("Encrypting '%s' to '%s'", self.plain_file, self.outfile)
+            with open(self.plain_file, 'rb') as plain_file:
                 openssl('enc', '-aes-256-cbc', '-pass',
                         'file:{secret}'.format(secret=self.secret),
                         _in=plain_file,
-                        _out=outfile)
-                logging.info("File %s encrypted to %s", self.plain_file, outfile)
+                        _out=self.outfile)
+                self._log.info("File %s encrypted to %s", self.plain_file, self.outfile)
                 return True
         except ErrorReturnCode as rcode:
-            logging.error("Encryption failed (%d): %s", rcode.exit_code, rcode.stderr.decode("utf-8"))
+            self._log.error("Encryption failed (%d): %s", rcode.exit_code, rcode.stderr.decode("utf-8"))
         except Exception as ex:
-            logging.error("Could not encrypt %s: %s", self.plain_file, ex)
+            self._log.error("Could not encrypt %s: %s", self.plain_file, ex)
 
 
 class SelfDestructKey(object):
@@ -255,10 +273,11 @@ class SelfDestructKey(object):
                 self._save()
             shred(self._plaintext)
         except ErrorReturnCode as rcode:
-            logging.error("Could not either save (encrypted) or shred (plaintext) the encryption "
-                          "passphrase in file '%s' to file '%s'.  You will have to securely "
-                          "delete the plaintext version using something like `shred -uz %s",
-                          self._plaintext, self.encrypted, self._plaintext)
+            raise RuntimeError(
+                "Either we could not save encrypted or not shred the plaintext passphrase "
+                "in file {plain} to file {enc}.  You will have to securely delete the plaintext "
+                "version using something like `shred -uz {plain}".format(
+                    plain=self._plaintext, enc=self.encrypted))
 
     def _save(self):
         """ Encrypts the contents of the key and writes it out to disk.
@@ -269,7 +288,7 @@ class SelfDestructKey(object):
         """
         if not os.path.exists(self.key_pair.public):
             raise RuntimeError("Encryption key file '%s' not found" % self.key_pair.public)
-        with open(self._plaintext) as selfkey:
+        with open(self._plaintext, 'rb') as selfkey:
             openssl('rsautl', '-encrypt', '-pubin', '-inkey', self.key_pair.public,
                     _in=selfkey, _out=self.encrypted)
 
@@ -279,8 +298,8 @@ def shred(filename):
     try:
         _shred('-uz', filename)
     except ErrorReturnCode as rcode:
-        logging.error("Could not securely destroy '%s' (%d): %s", filename,
-                      rcode.exit_code, rcode.stderr)
+        raise RuntimeError("Could not securely destroy '%s' (%d): %s", filename,
+                           rcode.exit_code, rcode.stderr)
 
 
 def parse_args():
@@ -290,69 +309,53 @@ def parse_args():
     :rtype dict
     """
     parser = argparse.ArgumentParser()
-    # TODO(marco): update the CLI args and the WORKDIR location
-    parser.add_argument('--workdir', default=os.getenv('WORKDIR', os.getcwd()),
-                        help="Optional argument; if specified, it will overried the `out` "
-                             "configuration in the YAML, which specifies where to emit the "
-                             "encrypted file.")
-    parser.add_argument('--logdir', default=None,
-                        help="The direcory to use for the log files, if none give, uses stdout")
-    parser.add_argument('--debug', '-v', default=False, action='store_true',
-                        help="Sets the logging level to DEBUG (verbose option).")
     parser.add_argument('-f', dest='conf_file', default="/etc/filecrypt/conf.yml",
                         help="The location of the YAML configuration file, if different from "
                              "the default.")
-    parser.add_argument('--secret', help="The full path of the ENCRYPTED passphrase to use to "
-                                         "encrypt the file; it will be left unmodified on disk.")
-    parser.add_argument('plaintext_file', help="The file that will be encrypted and securely "
-                                               "destroyed.")
+    parser.add_argument('-s', '--secret',
+                        help="The full path of the ENCRYPTED passphrase to use to encrypt the "
+                             "file; it will be left unmodified on disk.")
+    parser.add_argument('plaintext_file',
+                        help="The file that will be encrypted and securely destroyed.")
     return parser.parse_args()
 
 
-def configure_logging(config):
-    logfile = os.path.join(os.path.expanduser(config.logdir), 'messages.log') if config.logdir else None
-    if logfile:
-        print("All logging going to {}".format(logfile))
-    level = logging.DEBUG if config.debug else logging.INFO
-    logging.basicConfig(filename=logfile, level=level, format=LOG_FORMAT,
-                        datefmt="%Y-%m-%d %H:%M:%S")
-
 
 def main(cfg):
-    logging.debug("Working directory (%s)", cfg.workdir)
-    enc_cfg = EncryptConfiguration(conf_file=cfg.conf_file, secret_file=cfg.secret,
-                                   workdir=cfg.workdir)
-
+    enc_cfg = EncryptConfiguration(conf_file=cfg.conf_file, secret_file=cfg.secret)
     plaintext = cfg.plaintext_file
 
     keys = Keypair(private=enc_cfg.private, public=enc_cfg.public)
-    logging.info("Using key pair: %s", keys)
+    enc_cfg.log.info("Using key pair: %s", keys)
 
     passphrase = SelfDestructKey(enc_cfg.secret, keypair=keys)
-    logging.info("Using '%s' as the encryption secret", str(passphrase))
+    enc_cfg.log.info("Using '%s' as the encryption secret", str(passphrase))
+    enc_cfg.log.info("It will be securely destroyed and encrypted to '%s'", enc_cfg.secret)
 
     if enc_cfg.shred:
-        logging.warning("%s will be encrypted and destroyed", plaintext)
+        enc_cfg.log.warning("%s will be encrypted and destroyed", plaintext)
 
-    encryptor = FileEncryptor(str(passphrase), plaintext, enc_cfg.out)
+    encryptor = FileEncryptor(secret_keyfile=str(passphrase), plain_file=plaintext,
+                              dest_dir=enc_cfg.out, log=enc_cfg.log)
 
     if encryptor.encrypt():
         if enc_cfg.shred:
+            enc_cfg.log.warn("Securely destroing %s", plaintext)
             shred(plaintext)
-        logging.info("Encryption successful.")
+        enc_cfg.log.info("Encryption successful; saving data to store file '%s'.", enc_cfg.store)
+        with open(enc_cfg.store, 'a') as store_file:
+            store_file.write(','.join([os.path.abspath(plaintext), enc_cfg.secret,
+                                       os.path.abspath(encryptor.outfile)]))
+            store_file.write('\n')
     else:
-        logging.error("Encryption failed, original file retained.")
-        exit(1)
+        raise RuntimeError("Encryption failed, original file retained.")
 
 
 check_version()
-
 if __name__ == '__main__':
-    config = parse_args()
-
     try:
-        configure_logging(config)
+        config = parse_args()
         main(config)
     except Exception as ex:
-        logging.error("Could not complete execution.\nReason: %s", ex)
+        print("[ERROR] Could not complete execution.\nReason:", ex, sys.exc_info())
         exit(1)
