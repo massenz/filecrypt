@@ -1,3 +1,4 @@
+yaml
 # Requirements file for filecrypt.
 # Created by M. Massenzio (c) 2016.
 

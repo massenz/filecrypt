@@ -1,3 +1,9 @@
-This is a simple file to encrypt.
+!!! This is a secret to encrypt. !!!
 
-End.
+The contents of this file will be encrypted and the file shredded once you execute:
+
+    python3 filecrypt.py -f example_conf.yaml -s secret-key.enc plaintext.txt
+
+To recover the contents of this file use:
+
+    python3 filecrypt.py -f example_conf.yaml -d -s secret-key.enc plaintext.txt

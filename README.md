@@ -2,12 +2,11 @@
 # filecrypt - OpenSSL file encryption
 
 Author  | [M. Massenzio](https://www.linkedin.com/in/mmassenzio)
-:-------|---------------------------------:
-Version | 0.1.0
-Updated | 2016-07-10
+ -------|-----------
+Version | 0.2.0
+Updated | 2016-09-11
 
 ## overview
-
 
 Uses OpenSSL library to encrypt a file using a private/public key pair and a one-time secret.
 
@@ -24,34 +23,41 @@ The structure of the `conf.yml` file is as follows:
 
 ```yaml
 keys:
-    private: /home/bob/.ssh/secret.pem
-    public: /home/bob/.ssh/secret.pub
-    secrets: /opt/store/
+     private: sample.pem
+     public: sample.pub
+     secrets: .
 
-store: /home/bob/encrypt/stores.csv
+store: keys.csv
 
 # Where to store the encrypted file; the folder MUST already exist and the user
 # have write permissions.
-out: /data/store/enc
+#out: /data/store/file
 
-# Whether to securely delete the original plain-text file (optional, default true).
-shred: false
+# Whether to securely delete the original plaintext file.
+shred: true
+
+logging:
+   format: "%(asctime)s [%(levelname)-5s] %(message)s"
+   level: DEBUG
+
 ```
 
 The `private`/`public` keys are a key-pair generated using the `openssl genrsa` command; the
 encryption key used to actually encrypt the file will be created in the `secrets` folder,
 and afterward encrypted using the `public` key and stored in the location provided.
 
-The name will be `pass-key-nnn.enc`, where `nnn` will be a random value between `000` and
-`999`, that has not been already used for a file in that folder.
+The name will be `pass-key-nnnn.enc`, where `nnnn` will be a random value between `1000` and
+`9999`, that has not been already used for a file in that folder.
 
 The name of the secret passphrase can also be defined by the user, using the `--secret` option
-(specify the full path, it will be left unmodified):
+(it will be left unmodified):
 
-* if it does not exist a random secure one will be created, used for encryption, then encrypted and saved with the given path, while the plain-text temporary version securely destroyed; OR
+* if it does not exist a random secure one will be created, used for encryption, 
+  then encrypted and saved with the given path, while the plain-text temporary version securely 
+  destroyed; OR
 
 * if it is the name of an already existing file, it will be decrypted, used to encrypt the file,
-then left __unchanged__ on disk.
+  then left __unchanged__ on disk.
 
 **NOTE** we recommend NOT to re-use encryption passphrases, but always generate a new secret.
 
@@ -70,22 +76,46 @@ a new line will be appended at the end; any comments will be left unchanged.
 
 ## usage
 
-Always use the `--help` option to see the most up-to-date options available; anyway, the basic
-usage is (assuming the example configuration shown above is saved in `/opt/enc/conf.yml`):
+### keypair generation
 
-    filecrypt.py -f /opt/enc/conf.yml /data/store/201511_data.tar.gz
+We do not provide the means to generate them (this will be done at a later stage), but for now 
+they can be generated using:
+
+    openssl genrsa -out ./key.pem 2048
+    openssl rsa -in key.pem -out key.pub -outform PEM -pubout
+
+their path can then be specified in the `conf.yaml` file.
+
+### encryption
+
+Always use the `--help` option to see the most up-to-date options available; anyway, the basic
+usage is (see the example configuration in `examples/example_conf.yaml`):
+    
+    python3 filecrypt.py -f example_conf.yaml -s secret-key.enc plaintext.txt
 
 will create an encrypted copy of the file to be stored as `/data/store/201511_data.tar.gz.enc`,
 the original file __will not__ be securely destroyed (using `shred`) and the new encryption key to be stored, encrypted in `/opt/store/pass-key-778.enc`.
 
-A new line will be appended to `/home/bob/encrypt/stores.csv`:
+A new line will be appended to `keys.csv`:
 
-    /data/store/201511_data.tar,pass-key-778.enc,/data/store/201511_data.tar.gz.enc
+    /.../filecrypt/examples/plaintext.txt,secret-key.enc,/.../filecrypt/examples/plaintext.txt.enc
 
+the full path to both files will __always__ be used, regardless of whether a relative or absolute
+ path was specified on the command line.
+ 
+ 
 __IMPORTANT__
 >We recommend testing your configuration and command-line options on test files: `shred` erases files in a _terminal_ way that is __not__ recoverable: if you mess up, __you will lose data__.
 >
 >You have been warned.
+
+### decryption
+
+To decrypt a file that has been encrypted using this utility, just run virtually the same 
+command, but add the `-d` flag: we will automatically append the `.enc` extension to the file 
+name given, and decrypt it using the passed in secret key (`-s` flag):
+
+    python3 filecrypt.py -f example_conf.yaml -d -s secret-key.enc plaintext.txt
 
 ## references
 

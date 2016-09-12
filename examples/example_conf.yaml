@@ -1,0 +1,22 @@
+# Encryption configuration.
+# See https://github.com/massenz/filencrypt
+
+keys:
+     private: dumb.pem
+     public: dumb.pub
+     secrets: .
+
+store: keys.csv
+
+# Where to store the encrypted file; the folder MUST already exist and the user
+# have write permissions.
+# If not specified, the current directory will be used.
+#out: /data/store/file
+
+# Whether to securely delete the original plaintext file.
+shred: true
+
+logging:
+   format: "%(asctime)s [%(levelname)-5s] %(message)s"
+   level: DEBUG
+
