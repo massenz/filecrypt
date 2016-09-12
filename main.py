@@ -92,7 +92,10 @@ from collections import namedtuple
 import yaml
 
 from filecrypt import FileCrypto
-from self_destruct_key import SelfDestructKey, shred
+from utils import (SelfDestructKey,
+                   shred,
+                   KeystoreManager,
+                   KeystoreEntry)
 
 __author__ = 'Marco Massenzio'
 __email__ = 'marco@alertavert.com'
@@ -112,12 +115,11 @@ class EncryptConfiguration(object):
     DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
     LOG_FORMAT = '%(asctime)s [%(levelname)-5s] %(message)s'
 
-    def __init__(self, conf_file, secret_file=None):
+    def __init__(self, conf_file):
         self.out = None
         self.private = None
         self.public = None
         self.secrets_dir = None
-        self.secret = secret_file
         self.shred = None
         self.store = None
         self._log = logging.getLogger(self.__class__.__name__)
@@ -151,15 +153,6 @@ class EncryptConfiguration(object):
                 self.log.error("Cannot create directory '%s': %s", self.secrets_dir, err)
                 raise RuntimeError(err)
 
-        # This contortion is necessary due to the absence of a do-until construct in Python.
-        while not self.secret:
-            self.secret = os.path.join(self.secrets_dir,
-                                       "pass-key-{:4d}.enc".format(random.randint(999, 9999)))
-            # We need to prevent overwriting existing encrypted passphrases, so we keep looping
-            # until we find an unused filename.
-            if os.path.exists(self.secret):
-                self.secret = None
-
         self.store = configs.get('store')
 
         # If the `out` key is not present, the current directory is used.
@@ -179,6 +172,59 @@ class EncryptConfiguration(object):
         self._log.setLevel(log_config.get('level', 'INFO'))
         self._log.addHandler(handler)
         self.log.debug("Logging configuration complete")
+
+
+def create_secret_filename(secrets_dir):
+    """ Returns a new, randomly generated, filename for the secret key filename.
+
+    We need to prevent overwriting existing encrypted passphrases, so we keep recursing
+    until we find an unused filename (Python does not have a do-until, and this is more elegant
+    than alternatives).
+
+    :param secrets_dir: the path where the secret keys files are stored.
+    :return: a full path (starting with ``secrets_dir``) which is also guaranteed to not conflict
+        with an existing file.
+    :rtype: str
+    """
+    result = os.path.join(secrets_dir, "pass-key-{:4d}.enc".format(random.randint(999, 9999)))
+    return result if not os.path.exists(result) else create_secret_filename(secrets_dir)
+
+
+def establish_secret(cfg, secrets_dir, keystore, plaintext):
+    """ Will figure out a way to establish the filename where the secret is stored.
+
+    During encryption, the secret can either be passed in by the user (``--secret``) or just
+    randomly created (``create_secret_filename()``).
+
+    Similarly, during decryption, if the user has not specified a secret, it may be looked up in
+    the keystore, using the ``plaintext`` file as a lookup item.
+
+    Unless the user has specified an existing filename via a relative path, the result will
+    always be in the ``secrets_dir`` (typically, specified in the YAML configuration file).
+
+    :param cfg: the configuration parsed from the command line
+    :param secrets_dir: the directory that contains the secrets' files (as specified in
+        ``configuration.yaml``.
+    :param keystore: the keystore that contains the list of encrypted files and relative secrets.
+    :type keystore: KeystoreManager
+
+    :param plaintext: the name of the plaintext (unencrypted) file, that will be used to look up
+        in the ``keystore``.
+
+    :return: the full path to the secret file.
+    """
+    if cfg.secret:
+        if os.path.isabs(cfg.secret) or os.path.exists(cfg.secret):
+            return cfg.secret
+        else:
+            return os.path.join(secrets_dir, cfg.secret)
+
+    if not cfg.decrypt:
+        return create_secret_filename(secrets_dir)
+
+    entry = keystore.lookup(plaintext)
+    if entry:
+        return entry.secret
 
 
 def parse_args():
@@ -206,14 +252,20 @@ def parse_args():
 
 
 def main(cfg):
-    enc_cfg = EncryptConfiguration(conf_file=cfg.conf_file, secret_file=cfg.secret)
+    enc_cfg = EncryptConfiguration(conf_file=cfg.conf_file)
     plaintext = cfg.plaintext_file
 
     keys = Keypair(private=enc_cfg.private, public=enc_cfg.public)
     enc_cfg.log.info("Using key pair: %s", keys)
 
-    passphrase = SelfDestructKey(enc_cfg.secret, keypair=keys)
-    enc_cfg.log.info("Using '%s' as the encryption secret", enc_cfg.secret)
+    keystore = KeystoreManager(enc_cfg.store)
+
+    # The secret can be defined in several ways, depending also if it's an encryption or
+    # decryption that is required, etc. - best left to a specialized method.
+    secret = establish_secret(cfg, enc_cfg.secrets_dir, keystore, plaintext)
+
+    passphrase = SelfDestructKey(secret, keypair=keys)
+    enc_cfg.log.info("Using '%s' as the encryption secret", passphrase.keyfile)
 
     encryptor = FileCrypto(encrypt=not cfg.decrypt,
                            secret=passphrase,
@@ -223,15 +275,15 @@ def main(cfg):
                            log=enc_cfg.log)
     encryptor()
 
-    if not cfg.decrypt and enc_cfg.shred:
-        enc_cfg.log.warn("Securely destroing %s", plaintext)
-        shred(plaintext)
+    if not cfg.decrypt:
+        if enc_cfg.shred:
+            enc_cfg.log.warn("Securely destroing %s", plaintext)
+            shred(plaintext)
         enc_cfg.log.info("Encryption successful; saving data to store file '%s'.", enc_cfg.store)
-        with open(enc_cfg.store, 'a') as store_file:
-            store_file.write(','.join([os.path.abspath(plaintext),
-                                       os.path.abspath(enc_cfg.secret),
-                                       os.path.abspath(encryptor.encrypted_file)]))
-            store_file.write('\n')
+        entry = KeystoreEntry(os.path.abspath(plaintext),
+                              os.path.abspath(secret),
+                              os.path.abspath(encryptor.encrypted_file))
+        keystore.add_entry(entry)
 
 
 check_version()

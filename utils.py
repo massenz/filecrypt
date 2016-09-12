@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import namedtuple
+import csv
 import os
 from tempfile import mkstemp
 from sh import openssl, ErrorReturnCode, shred as _shred
@@ -26,8 +28,8 @@ class SelfDestructKey(object):
 
        This key also encrypts itself with the ``keypair`` before writing itself out to a file.
 
-       As a convenience, it provides the unencrypted contents of this key when converted to a
-       ``string`` via the ``__str__()`` special method.
+       As a convenience, it can be automatically converted to an array of bytes with the
+       unencrypted contents of the file via the ``__bytes__()`` special method.
     """
 
     def __init__(self, encrypted_key, keypair):
@@ -55,9 +57,15 @@ class SelfDestructKey(object):
 
     @property
     def keyfile(self):
+        """The name of the file that contains the unencrypted (plaintext) version of this key."""
         return self._plaintext
 
-    def __str__(self):
+    def __bytes__(self):
+        """The plaintext contents of the key file.
+
+        Convenience function to automatically convert this object to something immediately
+        usable during decryption.
+        """
         with open(self._plaintext, 'rb') as pf:
             return pf.read()
 
@@ -94,3 +102,56 @@ def shred(filename):
     except ErrorReturnCode as rcode:
         raise RuntimeError("Could not securely destroy '%s' (%d): %s", filename,
                            rcode.exit_code, rcode.stderr)
+
+
+KeystoreEntry = namedtuple('KeystoreEntry', 'plaintext secret encrypted')
+
+
+class KeystoreManager(object):
+    """Manages the keystore, where we keep the association between one-time keys and files.
+
+    There is a need to track which key was used when encrypting which file, so that we can easily
+    decrypt them when necessary.
+
+    This store uses the simplest approach, a CSV file with three entries per row: the original
+    unencrypted file, the encryption key file name and the encrypted file; they are all stored as
+    absolute paths and kept in no particular order.
+
+    We assume that the file size is such that sequential traversal and append-only semantics will NOT
+    cause any major performance impact.
+    """
+
+    def __init__(self, filestore):
+        if not os.path.exists(filestore):
+            raise ValueError("%s does not exist", filestore)
+        self.filestore = os.path.abspath(filestore)
+
+    def lookup(self, filename):
+        """Looks up for the given filename for any entry and returns the row contents.
+
+        :param filename: the name (relative or absolute) to look up, in any of the rows,
+        for any of the entries (be it the plaintext file, or the key name, or the encrypted file).
+        :type filename: str
+
+        :return: the ``namedtuple`` that represents a row in this store
+        :rtype: KeystoreEntry
+        """
+        with open(self.filestore, 'rt') as store:
+            reader = csv.reader(store)
+            for row in reader:
+                for item in row:
+                    if item.endswith(filename):
+                        return KeystoreEntry(plaintext=row[0],
+                                             secret=row[1],
+                                             encrypted=row[2])
+
+    def add_entry(self, entry):
+        """Adds a new entry at the end of the key store.
+
+        :param entry: the tuple containing the plaintext, secret and encrypted filenames.
+        :type entry: KeystoreEntry
+        """
+        with open(self.filestore, 'at') as store:
+            writer = csv.writer(store)
+            writer.writerow(entry)
+
