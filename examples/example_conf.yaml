@@ -2,9 +2,9 @@
 # See https://github.com/massenz/filencrypt
 
 keys:
-     private: dumb.pem
-     public: dumb.pub
-     secrets: .
+     private: test.pem
+     public: test.pub
+     secrets: /tmp
 
 store: keys.csv
 

@@ -1,3 +1,2 @@
 /home/marco/workspaces/python/filecrypt/examples/plaintext.txt,secret-key.enc,/home/marco/workspaces/python/filecrypt/examples/plaintext.txt.enc
-/home/marco/workspaces/python/filecrypt/examples/plaintext.txt,secret-key.enc,/home/marco/workspaces/python/filecrypt/examples/plaintext.txt.enc
-/home/marco/workspaces/python/filecrypt/examples/plaintext.txt,secret-key.enc,/home/marco/workspaces/python/filecrypt/examples/plaintext.txt.enc
+/home/marco/workspaces/python/filecrypt/examples/plaintext.txt,/home/marco/workspaces/python/filecrypt/examples/secret-key.enc,/home/marco/workspaces/python/filecrypt/examples/plaintext.txt.enc

@@ -91,7 +91,7 @@ their path can then be specified in the `conf.yaml` file.
 Always use the `--help` option to see the most up-to-date options available; anyway, the basic
 usage is (see the example configuration in `examples/example_conf.yaml`):
     
-    python3 filecrypt.py -f example_conf.yaml -s secret-key.enc plaintext.txt
+    python3 main.py -f example_conf.yaml -s secret-key.enc plaintext.txt
 
 will create an encrypted copy of the file to be stored as `/data/store/201511_data.tar.gz.enc`,
 the original file __will not__ be securely destroyed (using `shred`) and the new encryption key to be stored, encrypted in `/opt/store/pass-key-778.enc`.
@@ -115,7 +115,25 @@ To decrypt a file that has been encrypted using this utility, just run virtually
 command, but add the `-d` flag: we will automatically append the `.enc` extension to the file 
 name given, and decrypt it using the passed in secret key (`-s` flag):
 
-    python3 filecrypt.py -f example_conf.yaml -d -s secret-key.enc plaintext.txt
+    python3 main.py -f example_conf.yaml -s secret-key.enc -d plaintext.txt
+
+__NOTE__
+> Use the name of the plaintext file, even if it does not currently exists: the encrypted file 
+(which should obviously exist) will be assumed to be the same with a `.enc` trailing extension 
+(in the case of the example above, it will look for `plaintext.txt.enc` in the current directory).
+
+If the encryption key (`--secret` or `-s`) is not specified, then the application will try and 
+locate the plaintext file in the keystore specified in the `conf.yaml` using the `store` key:
+
+```yaml
+store: keys.csv
+...
+```
+and derive the location of the encryption key from the entry, if one is found.
+
+Please note that __the full absolute path must match__ even if only a relative path was given at 
+the command line, as files are always stored with their full path when saved to the key store.
+
 
 ## references
 
