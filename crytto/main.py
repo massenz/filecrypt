@@ -89,11 +89,11 @@ import sys
 import yaml
 
 
-from filecrypt.filecrypt import FileCrypto
-from filecrypt.utils import (SelfDestructKey,
-                             shred,
-                             KeystoreManager,
-                             KeystoreEntry)
+from crytto.filecrypt import FileCrypto
+from crytto.utils import (SelfDestructKey,
+                          shred,
+                          KeystoreManager,
+                          KeystoreEntry)
 
 __author__ = 'Marco Massenzio'
 __email__ = 'marco@alertavert.com'
