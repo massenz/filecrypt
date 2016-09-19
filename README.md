@@ -3,8 +3,8 @@
 
 Author  | [M. Massenzio](https://www.linkedin.com/in/mmassenzio)
  -------|-----------
-Version | 0.2.0
-Updated | 2016-09-11
+Version | 0.3.0
+Updated | 2016-09-18
 
 ## overview
 
@@ -13,6 +13,17 @@ Uses OpenSSL library to encrypt a file using a private/public key pair and a one
 A full description of the process can be found [here][how-to].
 
 See also this [blog entry](https://codetrips.com/2016/07/13/filecrypt-openssl-file-encryption/) for more details.
+
+# install
+
+This package has now been published on [PyPi](http://pypi.org) and can be installed simply using 
+`pip`:
+
+    pip install crytto
+    
+Please note the package name (`filecrypt` was conflicting with the existing `FileCrypt` package 
+name).
+
 
 # configuration
 
