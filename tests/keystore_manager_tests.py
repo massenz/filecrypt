@@ -15,7 +15,7 @@
 import unittest
 from tempfile import mkstemp
 
-from utils import KeystoreEntry, KeystoreManager
+from filecrypt.utils import KeystoreEntry, KeystoreManager
 
 
 class KeystoreManagerTests(unittest.TestCase):

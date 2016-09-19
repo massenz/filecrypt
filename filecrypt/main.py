@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # @copyright: AlertAvert.com (c) 2016. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,22 +78,22 @@ usage is::
 
     filecrypt -f /opt/enc/conf.yml /data/store/201511_data.tar.gz
 
-See the ``README.md`` file for more details.
+See ``README.md`` for more details.
 """
 import argparse
+from collections import namedtuple
 import logging
 import os
 import random
 import sys
-from collections import namedtuple
-
 import yaml
 
-from filecrypt import FileCrypto
-from utils import (SelfDestructKey,
-                   shred,
-                   KeystoreManager,
-                   KeystoreEntry)
+
+from filecrypt.filecrypt import FileCrypto
+from filecrypt.utils import (SelfDestructKey,
+                             shred,
+                             KeystoreManager,
+                             KeystoreEntry)
 
 __author__ = 'Marco Massenzio'
 __email__ = 'marco@alertavert.com'
@@ -105,7 +103,7 @@ def check_version():
     if sys.version_info < (3, 0):
         print("Python 3.0 or greater required (3.5 recommended). Please consider upgrading or "
               "using a virtual environment.")
-        exit(1)
+        sys.exit(1)
 
 Keypair = namedtuple('Keypair', 'private public')
 
@@ -286,8 +284,9 @@ def main(cfg):
         keystore.add_entry(entry)
 
 
-check_version()
-if __name__ == '__main__':
+def run():
+    """ Entry-point script for execution"""
+    check_version()
     try:
         config = parse_args()
         main(config)

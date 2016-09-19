@@ -1,29 +1,32 @@
 # .gitignore, created MM, 2013-03-06
 
-.idea
-*.classpath
+# IDE directories.
+.idea/
 *.iml
-*.project
 .venv
-ideaj
-out/
+*.classpath
+*.project
+
+# Misc junk.
 *.pyc
-build/
 *.dmg
 *.iso
 *.rar
 *.zip
-.metadata/
 *.log
 *.sqlite
 *.swp
 .DS_Store
-dist/
-requirements.txt.freeze
-src/sentinel.egg-info/
 
-.elasticbeanstalk/
+# Output directories.
+build/
+dist/
+.metadata/
+out/
+*.egg-info/
+MANIFEST
+
+# Encryption specific extensions to ignore.
 *.pem
 *.pub
 *.enc
-
