@@ -1,12 +1,14 @@
 
 # filecrypt - OpenSSL file encryption
 
-Author  | [M. Massenzio](https://www.linkedin.com/in/mmassenzio)
+Author  | [M. Massenzio](https://github.com/massenz)
  -------|-----------
 Version | 0.3.0
-Updated | 2016-09-18
+Updated | 2016-09-19
+Code    | [filecrypt](https://github.com/massenz/filecrypt)
 
-## overview
+
+# overview
 
 Uses OpenSSL library to encrypt a file using a private/public key pair and a one-time secret.
 
@@ -14,15 +16,22 @@ A full description of the process can be found [here][how-to].
 
 See also this [blog entry](https://codetrips.com/2016/07/13/filecrypt-openssl-file-encryption/) for more details.
 
-# install
+# installation
 
-This package has now been published on [PyPi](http://pypi.org) and can be installed simply using 
-`pip`:
+Install directly from PyPi:
 
-    pip install crytto
+    pip install crypto
     
 Please note the package name (`filecrypt` was conflicting with the existing `FileCrypt` package 
 name).
+    
+This requires OpenSSL to be installed on your machine:
+
+    sudo apt-get install openssl
+
+Alternatively, clone the project from github and follow the instructions below:
+
+    git clone git@github.com:massenz/filecrypt.git
 
 
 # configuration
