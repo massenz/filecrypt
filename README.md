@@ -20,10 +20,10 @@ See also this [blog entry](https://codetrips.com/2016/07/13/filecrypt-openssl-fi
 
 Install directly from PyPi:
 
-    pip install crypto
+    pip install crytto
     
-Please note the package name (`filecrypt` was conflicting with the existing `FileCrypt` package 
-name).
+Please note the **package name** (`filecrypt` was conflicting with the existing `FileCrypt` package 
+name, and `crypto` was already taken).
     
 This requires OpenSSL to be installed on your machine:
 
