@@ -76,10 +76,13 @@ class SelfDestructKey(object):
             shred(self._plaintext)
         except ErrorReturnCode as rcode:
             raise RuntimeError(
-                "Either we could not save encrypted or not shred the plaintext passphrase "
-                "in file {plain} to file {enc}.  You will have to securely delete the plaintext "
-                "version using something like `shred -uz {plain}".format(
-                    plain=self._plaintext, enc=self.encrypted))
+                "Error running: `{cmd}`\n"
+                "The error was: {err}\n"
+                "We could not shred the plaintext passphrase in file '{plain}' or encrypt it "
+                "to file {enc}.  You will have to securely delete the plaintext "
+                "version using something like `shred -uz {plain}`.".format(
+                    plain=self._plaintext, enc=self.encrypted, err=rcode.stderr.decode("utf-8"),
+                    cmd=rcode.full_cmd))
 
     def _save(self):
         """ Encrypts the contents of the key and writes it out to disk.

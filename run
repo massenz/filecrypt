@@ -5,13 +5,14 @@
 import os
 import sys
 
-from crytto.main import run
 
 # A bit of hackery to avoid python imports failures.
 # This is just for development purposes, users ought to instead
-# install crytto for PyPi.
+# install crytto from PyPi.
 realpath = os.path.realpath(__file__)
 dirname = os.path.dirname(realpath)
 sys.path.append(dirname)
 
-run()
+import crytto.main
+
+crytto.main.run()

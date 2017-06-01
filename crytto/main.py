@@ -275,7 +275,7 @@ def main(cfg):
 
     if not cfg.decrypt:
         if enc_cfg.shred:
-            enc_cfg.log.warn("Securely destroing %s", plaintext)
+            enc_cfg.log.warning("Securely destroing %s", plaintext)
             shred(plaintext)
         enc_cfg.log.info("Encryption successful; saving data to store file '%s'.", enc_cfg.store)
         entry = KeystoreEntry(os.path.abspath(plaintext),
