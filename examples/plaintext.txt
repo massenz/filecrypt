@@ -2,8 +2,16 @@
 
 The contents of this file will be encrypted and the file shredded once you execute:
 
-    python3 main.py -f example_conf.yaml -s secret-key.enc plaintext.txt
+    $ ../run -f example_conf.yaml -s secret-key.enc plaintext.txt
 
 To recover the contents of this file use:
 
-    python3 main.py -f example_conf.yaml -d -s secret-key.enc plaintext.txt
+    $ ../run -f example_conf.yaml -s secret-key.enc -d plaintext.txt
+
+You can try keeping this plaintext version:
+
+    $ ../run -f example_conf.yaml -s secret-key.enc -k plaintext.txt
+
+but then to decrypt it, the `--force` will have to be specified, to overwrite it:
+
+    $ ../run -f example_conf.yaml -s secret-key.enc -d --force plaintext.txt

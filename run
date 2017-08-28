@@ -1,18 +1,34 @@
 #!/usr/bin/env python
-
-# Helper launcher for crytto.py - see crytto/main.py
+#
+# Created by M. Massenzio (marco@alertavert.com), 2017-08-27
+#
+# Helper launcher for main.py - see crytto/main.py
 
 import os
 import sys
 
+""" Development runner script.
 
-# A bit of hackery to avoid python imports failures.
-# This is just for development purposes, users ought to instead
-# install crytto from PyPi.
+A bit of hackery to avoid python imports failures when running the encrypt/decrypt methods
+directly in ```main.py```.
+
+This is just for development purposes, users ought to instead
+install crytto from PyPi and use ```encrypt``` or ```decrypt``` console
+entry points.
+
+This takes exactly the same CLI args as described in the README, however, if
+used to decrypt, add the `-d` flag (which will be removed prior to running ```main```).
+"""
+
+# Adds this file's directory to the PYTHONPATH.
 realpath = os.path.realpath(__file__)
 dirname = os.path.dirname(realpath)
 sys.path.append(dirname)
 
 import crytto.main
 
-crytto.main.run()
+if '-d' in sys.argv:
+    sys.argv.remove('-d')
+    crytto.main.entrypoint(False)
+else:
+    crytto.main.entrypoint(True)

@@ -16,56 +16,70 @@ import logging
 import os
 from sh import ErrorReturnCode, openssl
 
-__author__ = 'Marco Massenzio'
-__email__ = 'marco@alertavert.com'
-
 
 class FileCrypto(object):
     """ Encrypts a file using OpenSSL and a secret key.
 
-        By passing the encrypted file as the ``plain_file`` at creation, this class can also be
-        used to **decrypt** the file, by calling ``decrypt()``.
-
         More details can be found at:
         https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst
     """
-    def __init__(self, secret, plain_file, dest_dir=None, encrypt=True, force=False, log=logging):
+    def __init__(self, secret, plain_file=None, encrypted_file=None, dest_dir=None,
+                 encrypt=True, force=False, log=logging):
         """ Initializes an encryptor.
 
-        This is always definted in terms of the ``plain_file``, whether it exists and needs to be
-        encrypted, or it does not, and will be created from the process of decryption: the encrypted
-        file is **always** assumed to have the same name as the ``plain_file`` (including any
-        extensions) and the trailing ``.enc`` extension.
+        Either one of ```plain_file``` or ```encrypted_file``` __must__ be specified: if only one is
+        defined, the other is derived by appending/removing the `.enc` extension; depending on
+        whether this is an encryption (```encrypt``` is ```True```) or a decryption operation,
+        the former or the latter __must__ exist before the operation takes place.
 
-        Unless specified in ``dest_dir``, the output of the encryption/decryption will always be
-        alongside the existing file.
+        Unless specified in ```dest_dir```, the output of the encryption/decryption will be
+        the current directory.
 
-        Finally, the encryption key is in the ``secret_keyfile`` in a readable format.
+        Finally, the encryption key is the ```secret``` in a readable format.
 
         :param secret: the encryption key
-        :type secret: self_destruct_key.SelfDestructKey
-        :param plain_file: the file to encrypt, or the destination for the decryption.
+        :type secret: SelfDestructKey
+
+        :param plain_file: the name of the file to encrypt, or the destination for the decryption.
+        :type: str
+
+        :param encrypted_file: the name of the file to decrypt, if unspecified, the same as
+            ```plain_file```, with the ```.enc``` extension appended.
+        :type encrypted_file: str
+
         :param dest_dir: where to place the encrypted file (if not specified, defaults to the
-            same directory as the ``plain_file``)
-        :param encrypt: whether this callable should perform an encryption or decryption
+            same directory as the ```plain_file```)
+        :type dest_dir: str
+
+        :param encrypt: whether this callable should perform an encryption (if ```True```,
+            the default) or decryption
         :type encrypt: bool
+
         :param force: whether we should overwrite the destination file if it already exists
         :type force: bool
+
         :param log: a logger; if not specified the `logging` module is used
+        :type log: logging.Logger
         """
         self.secret = secret
-        self.plain_file = plain_file
-        self.dest = dest_dir or os.path.dirname(plain_file)
-        self.overwrite = force
+        self.dest = dest_dir or os.getcwd()
         self.encrypt = encrypt
-        self.encrypted_file = os.path.join(self.dest, '{}.enc'.format(os.path.basename(self.plain_file)))
+        self.overwrite = force
         self._log = log
+
+        # Properties that will be populated after the call.
+        self._infile = None
+        self._outfile = None
+
+        if not (plain_file or encrypted_file):
+            raise ValueError("Either one of `plain_file` or `encrypted_file` MUST be specified")
+
+        self.plain_file = plain_file or os.path.basename(encrypted_file).strip('.enc')
+        self.encrypted_file = encrypted_file or '{}.enc'.format(os.path.basename(plain_file))
+        self._log.debug("Plaintext file: {}, Encrypted file: {}".format(plain_file, encrypted_file))
 
     def _check(self):
         """A few sanity checks before setting out to encrypt/decrypt the file.
-
-        :param encrypt: whether we are checking before encrypting the plaintext file.
-        :type encrypt: bool
 
         :raise RuntimeError: if any error condition is detected.
         """
@@ -75,33 +89,29 @@ class FileCrypto(object):
 
         if self.encrypt:
             if not plaintext_exists:
-                err_msg += "Could not find the file to encrypt '{}'. ".format(self.plain_file)
+                err_msg = "Could not find the file to encrypt '{}'. ".format(self.plain_file)
         else:
             if not encrypt_exists:
-                err_msg += "Could not find the encrypted file '{}'.".format(self.encrypted_file)
+                err_msg = "Could not find the encrypted file '{}'. ".format(self.encrypted_file)
             if plaintext_exists and not self.overwrite:
-                err_msg += "The plaintext file '{}' already exists and overwrite was not " \
+                err_msg += "The plaintext file '{}' already exists and --force was not " \
                            "specified. ".format(self.plain_file)
 
         if not os.path.isdir(self.dest):
             err_msg += "Destination directory '{}' does not exist. ".format(self.dest)
         if not os.path.exists(self.secret.keyfile):
-            err_msg += "Encryption key/passphrase file '{}' does not exist".format(self.secret.keyfile)
+            err_msg += "Encryption key/passphrase file '{}' does not exist".format(
+                self.secret.keyfile)
 
-        if len(err_msg) > 0:
+        if err_msg:
             raise RuntimeError("Cannot process {}: {}".format(self.plain_file, err_msg))
 
     def __call__(self, *args, **kwargs):
         """ Makes a `FileCrypto` a callable object and executes encryption/decryption."""
         self._check()
-        action = None
+        action = "encryption" if self.encrypt else "decryption"
         try:
-            if self.encrypt:
-                action = "encryption"
-                return self._encrypt()
-            else:
-                action = "decryption"
-                return self._decrypt()
+            return self._encrypt() if self.encrypt else self._decrypt()
 
         except ErrorReturnCode as rcode:
             self._log.error("%s failed (%d): %s", action, rcode.exit_code,
@@ -120,13 +130,15 @@ class FileCrypto(object):
         :return `True` if the encryption was successful
         :rtype bool
         """
-        self._log.info("Encrypting '%s' to '%s'", self.plain_file, self.encrypted_file)
+        self._outfile = os.path.join(self.dest, self.encrypted_file)
+        self._infile = self.plain_file
+        self._log.info("Encrypting '%s' to '%s'", self.plain_file, self._outfile)
         with open(self.plain_file, 'rb') as plain_file:
             openssl('enc', '-aes-256-cbc', '-pass',
                     'file:{secret}'.format(secret=self.secret.keyfile),
                     _in=plain_file,
-                    _out=self.encrypted_file)
-        self._log.info("File '%s' encrypted to '%s'", self.plain_file, self.encrypted_file)
+                    _out=self._outfile)
+        self._log.info("File '%s' encrypted to '%s'", self.plain_file, self._outfile)
         return True
 
     def _decrypt(self):
@@ -138,11 +150,21 @@ class FileCrypto(object):
         :return `True` if the deryption was successful
         :rtype bool
         """
-        self._log.info("Decrypting file '%s' to '%s'", self.encrypted_file, self.plain_file)
+        self._outfile = os.path.join(self.dest, self.plain_file)
+        self._infile = self.encrypted_file
+        self._log.info("Decrypting file '%s' to '%s'", self.encrypted_file, self._outfile)
         with open(self.encrypted_file, 'rb') as enc_file:
             openssl('enc', '-aes-256-cbc', '-d', '-pass',
                     'file:{secret}'.format(secret=self.secret.keyfile),
                     _in=enc_file,
-                    _out=self.plain_file)
-        self._log.info("File '%s' decrypted to '%s'", self.encrypted_file, self.plain_file)
+                    _out=self._outfile)
+        self._log.info("File '%s' decrypted to '%s'", self.encrypted_file, self._outfile)
         return True
+
+    @property
+    def infile(self):
+        return self._infile
+
+    @property
+    def outfile(self):
+        return self._outfile

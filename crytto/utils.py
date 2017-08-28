@@ -12,15 +12,83 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import logging
 from collections import namedtuple
 import csv
 import os
+from sh import (
+    openssl,
+    ErrorReturnCode,
+    shred as _shred,
+)
 from tempfile import mkstemp
-from sh import openssl, ErrorReturnCode, shred as _shred
 
 
-__author__ = 'Marco Massenzio'
-__email__ = 'marco@alertavert.com'
+
+
+class EncryptConfiguration(object):
+
+    DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+    LOG_FORMAT = '%(asctime)s [%(levelname)-5s] %(message)s'
+
+    def __init__(self, conf_file):
+        self.out = None
+        self.private = None
+        self.public = None
+        self.secrets_dir = None
+        self.shred = None
+        self.store = None
+        self._log = logging.getLogger(self.__class__.__name__)
+        self.parse_configuration_file(conf_file)
+
+    @property
+    def log(self):
+        return self._log
+
+    def parse_configuration_file(self, conf_file):
+        with open(conf_file) as cfg:
+            configs = yaml.load(cfg)
+
+        # First, let's get some logging going.
+        self._configure_logging(configs.get('logging') or dict())
+
+        keys = configs.get('keys')
+        if not keys:
+            self.log.error("The `keys:` section is required, cannot proceed without.")
+            raise RuntimeError("Missing `keys` in {}".format(conf_file))
+
+        self.private = keys.get('private')
+        self.public = keys.get('public')
+        self.secrets_dir = keys.get('secrets')
+
+        if not os.path.isdir(self.secrets_dir):
+            self.log.warn("Directory '%s' does not exist, trying to create it", self.secrets_dir)
+            try:
+                os.makedirs(self.secrets_dir, mode=0o775)
+            except OSError as err:
+                self.log.error("Cannot create directory '%s': %s", self.secrets_dir, err)
+                raise RuntimeError(err)
+
+        self.store = configs.get('store')
+
+        # If the `out` key is not present, the current directory is used.
+        self.out = configs.get('out', os.getcwd())
+
+        # Unless otherwise specified, we will securely destroy the original plaintext file.
+        self.shred = configs.get('shred', True)
+
+    def _configure_logging(self, log_config):
+        handler = logging.StreamHandler()
+        if 'logdir' in log_config:
+            handler = logging.FileHandler(os.path.join(log_config.get('logdir'), 'crytto.log'))
+        formatter = logging.Formatter(fmt=log_config.get('format', EncryptConfiguration.LOG_FORMAT),
+                                      datefmt=log_config.get('datefmt',
+                                                             EncryptConfiguration.DATE_FORMAT))
+        handler.setFormatter(formatter)
+        self._log.setLevel(log_config.get('level', 'WARN'))
+        self._log.addHandler(handler)
+        self.log.debug("Logging configuration complete")
 
 
 class SelfDestructKey(object):
@@ -85,12 +153,7 @@ class SelfDestructKey(object):
                     cmd=rcode.full_cmd))
 
     def _save(self):
-        """ Encrypts the contents of the key and writes it out to disk.
-
-        :param dest: the full path of the file that will hold the encrypted contents of this key.
-        :param key: the name of the file that holds an encryption key (the PUBLIC part of a key pair).
-        :return: None
-        """
+        """ Encrypts the contents of the key and writes it out to disk. """
         if not os.path.exists(self.key_pair.public):
             raise RuntimeError("Encryption key file '%s' not found" % self.key_pair.public)
         with open(self._plaintext, 'rb') as selfkey:
@@ -106,8 +169,9 @@ def shred(filename):
         raise RuntimeError("Could not securely destroy '%s' (%d): %s", filename,
                            rcode.exit_code, rcode.stderr)
 
+Keypair = namedtuple('Keypair', 'private public')
 
-KeystoreEntry = namedtuple('KeystoreEntry', 'plaintext secret encrypted')
+KeystoreEntry = namedtuple('KeystoreEntry', ['secret', 'encrypted'])
 
 
 class KeystoreManager(object):
@@ -116,17 +180,17 @@ class KeystoreManager(object):
     There is a need to track which key was used when encrypting which file, so that we can easily
     decrypt them when necessary.
 
-    This store uses the simplest approach, a CSV file with three entries per row: the original
-    unencrypted file, the encryption key file name and the encrypted file; they are all stored as
+    This store uses the simplest approach, a CSV file with two entries per row: the encryption
+    key file name and the encrypted file; they are all stored as
     absolute paths and kept in no particular order.
 
-    We assume that the file size is such that sequential traversal and append-only semantics will NOT
-    cause any major performance impact.
+    We assume that the file size is such that sequential traversal and append-only semantics
+    will NOT cause any major performance impact.
     """
 
     def __init__(self, filestore):
         if not os.path.exists(filestore):
-            raise ValueError("%s does not exist", filestore)
+            raise ValueError("{} does not exist".format(filestore))
         self.filestore = os.path.abspath(filestore)
 
     def lookup(self, filename):
@@ -144,9 +208,8 @@ class KeystoreManager(object):
             for row in reader:
                 for item in row:
                     if item.endswith(filename):
-                        return KeystoreEntry(plaintext=row[0],
-                                             secret=row[1],
-                                             encrypted=row[2])
+                        return KeystoreEntry(secret=row[0],
+                                             encrypted=row[1])
 
     def add_entry(self, entry):
         """Adds a new entry at the end of the key store.
@@ -157,4 +220,3 @@ class KeystoreManager(object):
         with open(self.filestore, 'at') as store:
             writer = csv.writer(store)
             writer.writerow(entry)
-

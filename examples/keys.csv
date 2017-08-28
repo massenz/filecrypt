@@ -2,3 +2,5 @@
 /home/marco/workspaces/python/filecrypt/examples/plaintext2.txt,/home/marco/workspaces/python/filecrypt/examples/secret-key.enc,/home/marco/workspaces/python/filecrypt/examples/plaintext.txt.enc
 foo,bar,baz
 /home/marco/workspaces/python/filecrypt/examples/plaintext.txt,/home/marco/workspaces/python/filecrypt/examples/secret-key.enc,/home/marco/workspaces/python/filecrypt/examples/plaintext.txt.enc
+/home/marco/workspaces/python/filecrypt/examples/plaintext.txt,/home/marco/workspaces/python/filecrypt/examples/secret-key.enc,/home/marco/workspaces/python/filecrypt/examples/plaintext.txt.enc
+/home/marco/workspaces/python/filecrypt/examples/plaintext.txt,/home/marco/workspaces/python/filecrypt/examples/secret-key.enc,/home/marco/workspaces/python/filecrypt/examples/plaintext.txt.enc

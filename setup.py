@@ -1,15 +1,26 @@
 # @copyright: AlertAvert.com (c) 2016. All rights reserved.
 
 from setuptools import setup
-from pypandoc import convert_file
 
-#: Converts the Markdown README in the RST format that PyPi expects.
-long_description = convert_file('README.md', 'rst')
+try:
+    from pypandoc import convert_file
+    long_description = convert_file('README.md', 'md')
+
+except ImportError:
+    long_description = """
+    Encryption / Decryption utilities, based on OpenSSL and 
+    public/private keypairs.
+    
+    Use the `encrypt` command to encrypt a plaintext file securely (and, optionally
+    securely destroy it) and the `decrypt` command to restore it.
+    
+    More information at: https://github.com/massenz/filecrypt.
+"""
 
 setup(name='crytto',
       description='An OpenSSL-based file encryption and decryption utility',
       long_description=long_description,
-      version='0.3.1',
+      version='0.4.0',
       url='https://github.com/massenz/filecrypt',
       author='M. Massenzio',
       author_email='marco@alertavert.com',
@@ -27,8 +38,7 @@ setup(name='crytto',
       ],
       entry_points={
           'console_scripts': [
-              'encrypt=crytto.main:run'
+              'encrypt=crytto.main:encrypt_cmd',
+              'decrypt=crytto.main:decrypt_cmd'
           ]
-      }
-
-      )
+      })

@@ -16,87 +16,23 @@
 Uses OpenSSL library to encrypt a file using a private/public key secret.
 
 A full description of the process can be found at:
-https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst
+[HOW-TO Encrypt an archive](https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst)
 
-configuration
--------------
-
-This uses a YAML file to describe the configuration; by default it assumes it is in
-``/etc/filecrypt/conf.yml`` but its location can be specified using the ``-f`` flag.
-
-The structure of the ``conf.yml`` file is as follows::
-
-    keys:
-        private: /home/bob/.ssh/secret.pem
-        public: /home/bob/.ssh/secret.pub
-        secrets: /opt/store/
-
-    store: /home/bob/encrypt/stores.csv
-
-    # Where to store the encrypted file; the folder MUST already exist and the user
-    # have write permissions.
-    out: /data/store/enc
-
-    # Whether to securely delete the original plaintext file (optional).
-    shred: false
-
-The ``private``/``public`` keys are a key-pair generated using the ``openssl genrsa`` command; the
-encryption key used to actually encrypt the file will be created in a temporary location,
-and afterward encrypted using the ``public`` key and stored in the location provided and the
-temporary plaintext copy securely erased.
-
-The name will be ``pass-key-nnn.enc``, where ``nnn`` will be a random value between ``000``` and
-``999``, that has not been already used for a file in that folder.
-
-The name of the secret passphrase can also be defined by the user, using the ``--secret`` option
-(specify the full path, it will **not** be modified):
-
-* if it does not exist, a temporary one will be created, used for encryption, then encrypted and
-saved with the given filename, while the plaintext version securely destroyed; OR
-
-* if it is the name of an already existing file, it will be decrypted, used to encrypt the file,
-then left unchanged on disk.
-
-**NOTE** we recommend NOT to re-use encryption passphrases, but always generate a new secret.
-
-**NOTE** it is currently not possible to specify a plaintext passphrase: we always assume that
-the given file has been encrypted using the ``private`` key.
-
-
-The ``store`` file is a CSV list of::
-
-    "Original archive","Encryption key","Encrypted archive"
-    201511_data.tar.gz,/opt/store/pass-key-001.enc,201511_data.tar.gz.enc
-
-a new line will be appended at the end, any comments will be left unchanged.
-
-usage
------
-
-Always use the ``--help`` option to see the most up-to-date options available; anyway, the basic
-usage is::
-
-    filecrypt -f /opt/enc/conf.yml /data/store/201511_data.tar.gz
-
-See ``README.md`` for more details.
+See the [README](https://github.com/massenz/crytto) for more details.
 """
+
 import argparse
-from collections import namedtuple
-import logging
 import os
 import random
 import sys
-import yaml
-
 
 from crytto.filecrypt import FileCrypto
 from crytto.utils import (SelfDestructKey,
                           shred,
                           KeystoreManager,
-                          KeystoreEntry)
+                          KeystoreEntry, EncryptConfiguration, Keypair)
 
-__author__ = 'Marco Massenzio'
-__email__ = 'marco@alertavert.com'
+FILECRYPT_CONF_YML = os.path.join(os.getenv('HOME'), ".crytto/conf.yml")
 
 
 def check_version():
@@ -104,72 +40,6 @@ def check_version():
         print("Python 3.0 or greater required (3.5 recommended). Please consider upgrading or "
               "using a virtual environment.")
         sys.exit(1)
-
-Keypair = namedtuple('Keypair', 'private public')
-
-
-class EncryptConfiguration(object):
-
-    DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-    LOG_FORMAT = '%(asctime)s [%(levelname)-5s] %(message)s'
-
-    def __init__(self, conf_file):
-        self.out = None
-        self.private = None
-        self.public = None
-        self.secrets_dir = None
-        self.shred = None
-        self.store = None
-        self._log = logging.getLogger(self.__class__.__name__)
-        self.parse_configuration_file(conf_file)
-
-    @property
-    def log(self):
-        return self._log
-
-    def parse_configuration_file(self, conf_file):
-        with open(conf_file) as cfg:
-            configs = yaml.load(cfg)
-
-        # First, let's get some logging going.
-        self._configure_logging(configs.get('logging') or dict())
-
-        keys = configs.get('keys')
-        if not keys:
-            self.log.error("The `keys:` section is required, cannot proceed without.")
-            raise RuntimeError("Missing `keys` in {}".format(conf_file))
-
-        self.private = keys.get('private')
-        self.public = keys.get('public')
-        self.secrets_dir = keys.get('secrets')
-
-        if not os.path.isdir(self.secrets_dir):
-            self.log.warn("Directory '%s' does not exist, trying to create it", self.secrets_dir)
-            try:
-                os.makedirs(self.secrets_dir, mode=0o775)
-            except OSError as err:
-                self.log.error("Cannot create directory '%s': %s", self.secrets_dir, err)
-                raise RuntimeError(err)
-
-        self.store = configs.get('store')
-
-        # If the `out` key is not present, the current directory is used.
-        self.out = configs.get('out', os.getcwd())
-
-        # Unless otherwise specified, we will securely destroy the original plaintext file.
-        self.shred = configs.get('shred', True)
-
-    def _configure_logging(self, log_config):
-        handler = logging.StreamHandler()
-        if 'logdir' in log_config:
-            handler = logging.FileHandler(os.path.join(log_config.get('logdir'), 'filecrypt.log'))
-        formatter = logging.Formatter(fmt=log_config.get('format', EncryptConfiguration.LOG_FORMAT),
-                                      datefmt=log_config.get('datefmt',
-                                                             EncryptConfiguration.DATE_FORMAT))
-        handler.setFormatter(formatter)
-        self._log.setLevel(log_config.get('level', 'INFO'))
-        self._log.addHandler(handler)
-        self.log.debug("Logging configuration complete")
 
 
 def create_secret_filename(secrets_dir):
@@ -188,70 +58,82 @@ def create_secret_filename(secrets_dir):
     return result if not os.path.exists(result) else create_secret_filename(secrets_dir)
 
 
-def establish_secret(cfg, secrets_dir, keystore, plaintext):
+def establish_secret(secret, secrets_dir, keystore, infile=None, decrypt=False):
     """ Will figure out a way to establish the filename where the secret is stored.
 
-    During encryption, the secret can either be passed in by the user (``--secret``) or just
-    randomly created (``create_secret_filename()``).
+    During encryption, the secret can either be passed in by the user (```--secret```) or just
+    randomly created (```create_secret_filename()```).
 
     Similarly, during decryption, if the user has not specified a secret, it may be looked up in
-    the keystore, using the ``plaintext`` file as a lookup item.
+    the keystore, using the ```infile``` file as a lookup item.
 
     Unless the user has specified an existing filename via a relative path, the result will
-    always be in the ``secrets_dir`` (typically, specified in the YAML configuration file).
+    always be in the ```secrets_dir``` (typically, specified in the YAML configuration file).
 
-    :param cfg: the configuration parsed from the command line
+    :param secret: the name of the secret file, may be ```None```
     :param secrets_dir: the directory that contains the secrets' files (as specified in
-        ``configuration.yaml``.
-    :param keystore: the keystore that contains the list of encrypted files and relative secrets.
-    :type keystore: KeystoreManager
+        ```configuration.yaml```.
 
-    :param plaintext: the name of the plaintext (unencrypted) file, that will be used to look up
-        in the ``keystore``.
+    :param keystore: the keystore that contains the list of encrypted files and relative secrets.
+    :type keystore: KeystoreManager or None
+
+    :param infile: the name of the file to encrypt/decrypt, that will be used to look up
+        in the keystore if ```decrypt``` is ```True```.
+    :type infile: str or None
+
+    :param decrypt: if we are trying to decrypt a file (and this flag will be set to ```True```)
+        we will continue trying to lookup in the ```keystore``` for a matching key; otherwise,
+        a newly created one will be returned.
+    :type decrypt: bool
 
     :return: the full path to the secret file.
     """
-    if cfg.secret:
-        if os.path.isabs(cfg.secret) or os.path.exists(cfg.secret):
-            return cfg.secret
+    if secret:
+        if os.path.isabs(secret) or os.path.exists(secret):
+            return secret
         else:
-            return os.path.join(secrets_dir, cfg.secret)
+            return os.path.join(secrets_dir, secret)
 
-    if not cfg.decrypt:
+    if not decrypt:
         return create_secret_filename(secrets_dir)
 
-    entry = keystore.lookup(plaintext)
-    if entry:
-        return entry.secret
+    if keystore and infile:
+        entry = keystore.lookup(infile)
+        if entry:
+            return entry.secret
 
 
 def parse_args():
     """ Parse command line arguments and returns a configuration object.
 
     :return the configuration object, arguments accessed via dotted notation
-    :rtype dict
+    :rtype Namespace
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', dest='conf_file', default="/etc/filecrypt/conf.yml",
+    parser.add_argument('-f', dest='conf_file', default=FILECRYPT_CONF_YML,
                         help="The location of the YAML configuration file, if different from "
-                             "the default.")
+                             "the default {}.".format(FILECRYPT_CONF_YML))
+    parser.add_argument('-k', '--keep', action='store_true',
+                        help="Keep the plaintext file. Overriddes the 'shred' option in the "
+                             "configuration YAML.")
     parser.add_argument('-s', '--secret',
                         help="The full path of the ENCRYPTED passphrase to use to encrypt the "
                              "file; it will be left unmodified on disk.")
-    parser.add_argument('-d', dest='decrypt', action='store_true',
-                        help="Optional, if specified, the file is assumed to be encrypted and "
-                             "will be decrypted.")
+    parser.add_argument('-o', '--out',
+                        help="The output file, overrides the default naming and the location "
+                             "defined in the YAML configuration file.")
     parser.add_argument('-w', '--force', action='store_true',
                         help="If specified, the destination file will be overwritten if it "
                              "already exists.")
-    parser.add_argument('plaintext_file',
-                        help="The file that will be encrypted and securely destroyed.")
+    parser.add_argument('infile',
+                        help="The file that will be securely encrypted or decrypted.")
     return parser.parse_args()
 
 
-def main(cfg):
+def main(cfg, encrypt=True):
     enc_cfg = EncryptConfiguration(conf_file=cfg.conf_file)
-    plaintext = cfg.plaintext_file
+    if cfg.keep:
+        enc_cfg.shred = False
 
     keys = Keypair(private=enc_cfg.private, public=enc_cfg.public)
     enc_cfg.log.info("Using key pair: %s", keys)
@@ -260,36 +142,57 @@ def main(cfg):
 
     # The secret can be defined in several ways, depending also if it's an encryption or
     # decryption that is required, etc. - best left to a specialized method.
-    secret = establish_secret(cfg, enc_cfg.secrets_dir, keystore, plaintext)
+    secret = establish_secret(cfg.secret, enc_cfg.secrets_dir, keystore, cfg.infile, not encrypt)
+
+    if not secret:
+        raise RuntimeError("Could not locate a suitable decryption key for {}; keystore: {}".format(
+            cfg.infile, keystore.filestore))
 
     passphrase = SelfDestructKey(secret, keypair=keys)
     enc_cfg.log.info("Using '%s' as the encryption secret", passphrase.keyfile)
 
-    encryptor = FileCrypto(encrypt=not cfg.decrypt,
+    if cfg.out:
+        enc_cfg.out = None
+
+    plaintext = cfg.infile if encrypt else cfg.out
+    encrypted = cfg.out if encrypt else cfg.infile
+
+    encryptor = FileCrypto(encrypt=encrypt,
                            secret=passphrase,
                            plain_file=plaintext,
+                           encrypted_file=encrypted,
                            dest_dir=enc_cfg.out,
                            force=cfg.force,
                            log=enc_cfg.log)
     encryptor()
 
-    if not cfg.decrypt:
+    if encrypt:
         if enc_cfg.shred:
             enc_cfg.log.warning("Securely destroing %s", plaintext)
             shred(plaintext)
         enc_cfg.log.info("Encryption successful; saving data to store file '%s'.", enc_cfg.store)
-        entry = KeystoreEntry(os.path.abspath(plaintext),
+        entry = KeystoreEntry(os.path.abspath(encryptor.infile),
                               os.path.abspath(secret),
-                              os.path.abspath(encryptor.encrypted_file))
+                              os.path.abspath(encryptor.outfile))
         keystore.add_entry(entry)
 
 
-def run():
+def entrypoint(encrypt):
     """ Entry-point script for execution"""
     check_version()
     try:
         config = parse_args()
-        main(config)
+        main(config, encrypt=encrypt)
     except Exception as ex:
         print("[ERROR] Could not complete execution:", ex)
         exit(1)
+
+
+def encrypt_cmd():
+    """ Console entry point for the ```encrypt``` command."""
+    entrypoint(True)
+
+
+def decrypt_cmd():
+    """" Console entry point for the ```decrypt``` command."""
+    entrypoint(False)

@@ -22,6 +22,6 @@ shred: false
 logging:
   format: "%(asctime)s [%(levelname)-5s] %(message)s"
   level: DEBUG
-  # The filename will always be appended to and named 'filecrypt.log'.
-  logdir: /var/log/filecrypt
+  # The filename will always be appended to and named 'crytto.log'.
+  logdir: /var/log/crytto
   datefmt: "%Y-%m-%d %H:%M:%S"
