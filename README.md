@@ -4,8 +4,8 @@
 Author  | [M. Massenzio](https://github.com/massenz)
  -------|-----------
 Version | 0.4.0
-Updated | 2017-08-27
-Code    | [filecrypt](https://github.com/massenz/filecrypt)
+Updated | 2017-08-29
+Code    | [github](https://github.com/massenz/filecrypt)
 
 
 # overview
@@ -21,10 +21,10 @@ See also this [blog entry](https://codetrips.com/2016/07/13/filecrypt-openssl-fi
 Install directly from PyPi:
 
     pip install crytto
-    
+
 Please note the **package name** (`filecrypt` was conflicting with the existing `FileCrypt` package 
 name, and `crypto` was already taken).
-    
+
 This requires OpenSSL to be installed on your machine:
 
     sudo apt-get install openssl
@@ -33,6 +33,17 @@ Alternatively, clone the project from github and follow the instructions below:
 
     git clone git@github.com:massenz/filecrypt.git
 
+Once cloned, you can try out functionality using the `run` script (which replaces the 
+`console-scripts` installed by the package) which takes the same arguments as the [encryption]
+(#encryption) command; or adding a `-d` flag, will execute the [decryption](#decryption) command.
+
+Once all dependencies are installed:
+
+    pip install -r requirements.txt
+
+tests can be run via:
+
+    nosetests tests
 
 # configuration
 
@@ -164,8 +175,8 @@ or:
 Regardless of the means of specifying the input/outpup files, the full path to both files will 
 __always__ be used in the CSV keystore, regardless of whether a relative or absolute
 path was specified on the command line.
- 
- 
+
+
 __IMPORTANT__
 >We recommend testing your configuration and command-line options on test files: `shred` erases files in a _terminal_ way that is __not__ recoverable: if you mess up, __you will lose data__.
 >
@@ -198,6 +209,15 @@ effect and the value of the `shred:` option will be ignored.
 
 As the encrypted file is already cryptographically secure a simple `rm my_secret.doc.enc` will be
 sufficient to guarantee privacy.
+
+### pruning
+
+The keystore may grow very large and entries may become obsolete, as files are deleted: using the
+ `prune_store` script (optionally, giving it the name of the keystore to prune) all entries where
+  either of the files are no longer existing will be removed.
+
+__This command may lead to data loss__, however, a copy of the keystore is backed up with the 
+`.bak` extension.
 
 __Note__
 For Decryption, we will not use the value of the `out:` flag in the YAML configuration file, even

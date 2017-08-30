@@ -2,3 +2,4 @@
 # Keypair: test.pem; test.pub
 #
 examples/secret-key.enc,examples/plaintext.txt.enc
+another-key.enc,examples/another.doc

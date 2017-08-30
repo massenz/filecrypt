@@ -39,6 +39,7 @@ setup(name='crytto',
       entry_points={
           'console_scripts': [
               'encrypt=crytto.main:encrypt_cmd',
-              'decrypt=crytto.main:decrypt_cmd'
+              'decrypt=crytto.main:decrypt_cmd',
+              'prune_store=crytto.main:prune_cmd',
           ]
       })

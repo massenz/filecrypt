@@ -30,5 +30,8 @@ import crytto.main
 if '-d' in sys.argv:
     sys.argv.remove('-d')
     crytto.main.entrypoint(False)
+elif 'prune' in sys.argv:
+    sys.argv.remove("prune")
+    crytto.main.prune_cmd()
 else:
     crytto.main.entrypoint(True)

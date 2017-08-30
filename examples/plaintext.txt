@@ -12,6 +12,6 @@ You can try keeping this plaintext version:
 
     $ ../run -f example_conf.yaml -s secret-key.enc -k plaintext.txt
 
-but then to decrypt it, the `--force` will have to be specified, to overwrite it:
+but then to decrypt it, `--force` will have to be specified, to overwrite it:
 
     $ ../run -f example_conf.yaml -s secret-key.enc -d --force plaintext.txt

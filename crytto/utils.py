@@ -13,18 +13,18 @@
 # limitations under the License.
 
 
-import logging
 from collections import namedtuple
 import csv
+import logging
 import os
+from tempfile import mkstemp
+import yaml
+
 from sh import (
     openssl,
     ErrorReturnCode,
     shred as _shred,
 )
-from tempfile import mkstemp
-
-
 
 
 class EncryptConfiguration(object):
@@ -186,6 +186,9 @@ class KeystoreManager(object):
 
     We assume that the file size is such that sequential traversal and append-only semantics
     will NOT cause any major performance impact.
+
+    __NOTE__ this class (and the underlying store) allows for duplicate entries; while lookups
+    will return only __the first match__; this is by design and is a known limitation.
     """
 
     def __init__(self, filestore):
@@ -208,8 +211,7 @@ class KeystoreManager(object):
             for row in reader:
                 for item in row:
                     if item.endswith(filename):
-                        return KeystoreEntry(secret=row[0],
-                                             encrypted=row[1])
+                        return KeystoreEntry(*row)
 
     def add_entry(self, entry):
         """Adds a new entry at the end of the key store.
@@ -220,3 +222,47 @@ class KeystoreManager(object):
         with open(self.filestore, 'at') as store:
             writer = csv.writer(store)
             writer.writerow(entry)
+
+    def remove(self, entry):
+        """ Removes an entry from the store.
+
+        :param entry: the full row to remove, or just the name of the encrypted file for the row.
+        :type entry: str or KeystoreEntry
+
+        :return: ```True``` if the entry was successfully removed
+        :rtype: bool
+        """
+        backup = self.filestore + '.bak'
+        os.rename(self.filestore, backup)
+        found = False
+        with open(backup, 'rt') as old:
+            reader = csv.reader(old)
+            with open(self.filestore, 'wt') as store:
+                writer = csv.writer(store)
+                for row in reader:
+                    existing = KeystoreEntry(*row)
+                    entry_to_remove = entry if isinstance(entry, KeystoreEntry) else KeystoreEntry(
+                        secret=row[0], encrypted=entry)
+                    if existing != entry_to_remove or row[0].startswith('#'):
+                        writer.writerow(row)
+                    else:
+                        found = True
+        return found
+
+    def prune(self):
+        """ Cleans up entries that no longer exist.
+
+        If either the key or the encrypted file have been removed from the system, the relative
+        row will be removed from the backing store.
+
+        A copy of the keystore will be kept in a same-named file, with a ```.bak``` suffix.
+        """
+        backup = self.filestore + '.bak'
+        os.rename(self.filestore, backup)
+        with open(backup, 'rt') as old:
+            reader = csv.reader(old)
+            with open(self.filestore, 'wt') as store:
+                writer = csv.writer(store)
+                for row in reader:
+                    if row[0].startswith('#') or (os.path.exists(row[0]) and os.path.exists(row[1])):
+                        writer.writerow(row)

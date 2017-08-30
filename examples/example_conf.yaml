@@ -2,16 +2,16 @@
 # See https://github.com/massenz/filencrypt
 
 keys:
-     private: test.pem
-     public: test.pub
+     private: /data/store/keys/test.pem
+     public: /data/store/keys/test.pub
      secrets: /tmp
 
-store: keys.csv
+store: /data/store/keys/keys.csv
 
 # Where to store the encrypted file; the folder MUST already exist and the user
 # have write permissions.
 # If not specified, the current directory will be used.
-out: /data/store/file
+out: /data/store/files
 
 # Whether to securely delete the original plaintext file.
 shred: false

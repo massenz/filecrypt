@@ -168,12 +168,10 @@ def main(cfg, encrypt=True):
 
     if encrypt:
         if enc_cfg.shred:
-            enc_cfg.log.warning("Securely destroing %s", plaintext)
+            enc_cfg.log.warning("Securely destroying %s", plaintext)
             shred(plaintext)
         enc_cfg.log.info("Encryption successful; saving data to store file '%s'.", enc_cfg.store)
-        entry = KeystoreEntry(os.path.abspath(encryptor.infile),
-                              os.path.abspath(secret),
-                              os.path.abspath(encryptor.outfile))
+        entry = KeystoreEntry(os.path.abspath(secret), os.path.abspath(encryptor.outfile))
         keystore.add_entry(entry)
 
 
@@ -196,3 +194,16 @@ def encrypt_cmd():
 def decrypt_cmd():
     """" Console entry point for the ```decrypt``` command."""
     entrypoint(False)
+
+
+def prune_cmd():
+    if len(sys.argv) < 2:
+        enc_cfg = EncryptConfiguration(conf_file=FILECRYPT_CONF_YML)
+        store = enc_cfg.store
+    else:
+        store = sys.argv[1]
+    keystore = KeystoreManager(store)
+    keystore.prune()
+    print("Keystore {} has been pruned; a backup copy has been kept in {}".format(
+        keystore.filestore, keystore.filestore + '.bak'))
+

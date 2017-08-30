@@ -144,8 +144,8 @@ class FileCrypto(object):
     def _decrypt(self):
         """ Performs the decryption of an encrypted file.
 
-        This is the reverse operation of ``encrypt()`` executing virtually an identical
-        `openssl` command, with the in/out roles reversed and adding a `-d` flag.
+        This is the reverse operation of ```encrypt()``` executing virtually an identical
+        ```openssl``` command, with the in/out roles reversed and adding a ```-d``` flag.
 
         :return `True` if the deryption was successful
         :rtype bool
