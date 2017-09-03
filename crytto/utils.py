@@ -51,7 +51,8 @@ class EncryptConfiguration(object):
             configs = yaml.load(cfg)
 
         # First, let's get some logging going.
-        self._configure_logging(configs.get('logging') or dict())
+        if 'logging' in configs:
+            self._configure_logging(configs.get('logging'))
 
         keys = configs.get('keys')
         if not keys:
@@ -63,7 +64,7 @@ class EncryptConfiguration(object):
         self.secrets_dir = keys.get('secrets')
 
         if not os.path.isdir(self.secrets_dir):
-            self.log.warn("Directory '%s' does not exist, trying to create it", self.secrets_dir)
+            self.log.warning("Directory '%s' does not exist, trying to create it", self.secrets_dir)
             try:
                 os.makedirs(self.secrets_dir, mode=0o775)
             except OSError as err:
@@ -169,7 +170,7 @@ def shred(filename):
         raise RuntimeError("Could not securely destroy '%s' (%d): %s", filename,
                            rcode.exit_code, rcode.stderr)
 
-Keypair = namedtuple('Keypair', 'private public')
+Keypair = namedtuple('Keypair', ['private', 'public'])
 
 KeystoreEntry = namedtuple('KeystoreEntry', ['secret', 'encrypted'])
 

@@ -20,7 +20,7 @@ except ImportError:
 setup(name='crytto',
       description='An OpenSSL-based file encryption and decryption utility',
       long_description=long_description,
-      version='0.4.0',
+      version='0.4.1',
       url='https://github.com/massenz/filecrypt',
       author='M. Massenzio',
       author_email='marco@alertavert.com',

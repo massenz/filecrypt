@@ -1,0 +1,11 @@
+This is a test file.
+
+It has some lines of text.
+
+It will be encrypted and decrypted: obviously, we would like the decrypted
+
+
+        version
+
+        to              be
+    equal, to the encrypted one     .

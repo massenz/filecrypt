@@ -75,7 +75,7 @@ class KeystoreManagerTests(common.TestBase):
         self.assertEqual(KeystoreEntry(k, e), self.tmp_store.lookup(e))
 
 
-class KeystoreEntryTest(common.TestBase):
+class KeystoreEntryTests(common.TestBase):
     def test_equality(self):
         e1 = KeystoreEntry(secret='/tmp/zek', encrypted='/var/tmp/doc.c')
         e2 = KeystoreEntry(secret='/tmp/zek', encrypted='/var/tmp/doc.c')

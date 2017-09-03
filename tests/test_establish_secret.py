@@ -7,7 +7,7 @@ from crytto.utils import KeystoreManager
 from tests import common
 
 
-class TestFindSecrets(common.TestBase):
+class EstablishSecretsTests(common.TestBase):
 
     def test_return_given_file_if_exists(self):
         secret_file = os.path.join(self.data_dir, "secret")
