@@ -26,18 +26,15 @@ import os
 import random
 import sys
 
-from sh import tar
-
 from crytto.filecrypt import FileCrypto
 from crytto.utils import (SelfDestructKey,
                           shred,
                           KeystoreManager,
                           KeystoreEntry, EncryptConfiguration, Keypair)
 
+
 DEFAULT_CONF_FILE = "conf.yml"
-
 DEFAULT_CONF_DIF = ".crytto"
-
 FILECRYPT_CONF_YML = os.path.join(os.getenv('HOME'), DEFAULT_CONF_DIF, DEFAULT_CONF_FILE)
 
 
@@ -124,18 +121,27 @@ def parse_args():
     parser.add_argument('-f', dest='conf_file', default=FILECRYPT_CONF_YML,
                         help="The location of the YAML configuration file, if different from "
                              "the default {}.".format(FILECRYPT_CONF_YML))
+
     parser.add_argument('-k', '--keep', action='store_true',
                         help="Keep the plaintext file. Overriddes the 'shred' option in the "
                              "configuration YAML.")
-    parser.add_argument('-s', '--secret',
-                        help="The full path of the ENCRYPTED passphrase to use to encrypt the "
-                             "file; it will be left unmodified on disk.")
+
     parser.add_argument('-o', '--out',
                         help="The output file, overrides the default naming and the location "
                              "defined in the YAML configuration file.")
+
+    parser.add_argument('-p', '--pubkey',
+                        help="Only used for the encrypt_send command, to specify a Public key "
+                             "shared by the recipient; otherwise ignored.")
+
+    parser.add_argument('-s', '--secret',
+                        help="The full path of the ENCRYPTED passphrase to use to encrypt the "
+                             "file; it will be left unmodified on disk.")
+
     parser.add_argument('-w', '--force', action='store_true',
                         help="If specified, the destination file will be overwritten if it "
                              "already exists.")
+
     parser.add_argument('infile',
                         help="The file that will be securely encrypted or decrypted.")
     return parser.parse_args()
@@ -234,47 +240,6 @@ def encrypt_to_send(file_to_encrypt, pubkey, dest=None):
     return dest, secret, os.path.join(dest, outfile)
 
 
-def receive_to_decrypt(file_to_decrypt, secret, conf_file=FILECRYPT_CONF_YML):
-    """ Decrypts a file sent by another party with whom we shared our Public key.
-
-    :param conf_file: the YAML configuration file that will define where the keypair is; the
-        output directory and other configuration parameters.
-    :param file_to_decrypt: the name of the file to decrypt; **must exist** and will be left
-        unchanged.
-    :type file_to_decrypt: str
-
-    :param secret: the name of the encrypted passphrase used to encrypt the file; this was encrypted
-        using our public key and will be decrypted using our private key.  Left unchanged.
-    :type secret: str
-
-    :return: a tuple with the output directory and the plaintext file
-    :rtype: tuple
-    """
-    if not (os.path.exists(file_to_decrypt) and os.path.exists(secret)):
-        raise ValueError("{} and {} must both exist, nothing to do".format(
-            file_to_decrypt, secret))
-
-    enc_cfg = EncryptConfiguration(conf_file=conf_file)
-    keys = Keypair(private=enc_cfg.private, public=enc_cfg.public)
-    passphrase = SelfDestructKey(secret, keypair=keys)
-
-    # Remove path component from the filename and replace the '.enc' extension for the output file.
-    _, infile = os.path.split(file_to_decrypt)
-    name, ext = os.path.splitext(infile)
-    if ext == '.enc':
-        outfile = name
-    else:
-        outfile = file_to_decrypt + '.out'
-    encryptor = FileCrypto(encrypt=False,
-                           secret=passphrase,
-                           plain_file=outfile,
-                           encrypted_file=file_to_decrypt,
-                           dest_dir=enc_cfg.out,
-                           log=enc_cfg.log)
-    encryptor()
-    return enc_cfg.out, outfile
-
-
 def entrypoint(should_encrypt):
     """ Entry-point script for execution"""
     check_version()
@@ -294,6 +259,20 @@ def encrypt_cmd():
 def decrypt_cmd():
     """" Console entry point for the `decrypt` command."""
     entrypoint(False)
+
+
+def send_cmd():
+    """ Encrypts a file to be sent to a remote recipient."""
+    check_version()
+    try:
+        config = parse_args()
+        if not config.pubkey:
+            print("[ERROR] A valid Public key must be defined using the --pubkey option")
+            exit(1)
+        encrypt_to_send(config.infile, config.pubkey, config.out)
+    except Exception as ex:
+        print("[ERROR] Could not complete execution:", ex)
+        exit(1)
 
 
 def prune_cmd():
