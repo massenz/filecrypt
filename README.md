@@ -3,8 +3,8 @@
 
 Author  | [M. Massenzio](https://github.com/massenz)
  -------|-----------
-Version | 0.4.0
-Updated | 2017-08-29
+Version | 0.5.0
+Updated | 2017-10-15
 Code    | [github](https://github.com/massenz/filecrypt)
 
 
@@ -22,8 +22,7 @@ Install directly from PyPi:
 
     pip install crytto
 
-Please note the **package name** (`filecrypt` was conflicting with the existing `FileCrypt` package 
-name, and `crypto` was already taken).
+Please note the **package name** (`filecrypt` was conflicting with the existing `FileCrypt` package name, and `crypto` was already taken).
 
 This requires OpenSSL to be installed on your machine:
 
@@ -33,9 +32,7 @@ Alternatively, clone the project from github and follow the instructions below:
 
     git clone git@github.com:massenz/filecrypt.git
 
-Once cloned, you can try out functionality using the `run` script (which replaces the 
-`console-scripts` installed by the package) which takes the same arguments as the [encryption]
-(#encryption) command; or adding a `-d` flag, will execute the [decryption](#decryption) command.
+Once cloned, you can try out functionality using the `run` script (which replaces the `console-scripts` installed by the package) which takes the same arguments as the [encryption] (#encryption) command; or adding a `-d` flag, will execute the [decryption](#decryption) command.
 
 Once all dependencies are installed:
 
@@ -47,8 +44,7 @@ tests can be run via:
 
 # configuration
 
-This uses a YAML file to describe the configuration; by default it assumes it is in
-`/etc/filecrypt/conf.yml` but its location can be specified using the `-f` flag.
+This uses a YAML file to describe the configuration; by default it assumes it is in `/etc/filecrypt/conf.yml` but its location can be specified using the `-f` flag.
 
 The structure of the `conf.yml` file is as follows:
 
@@ -91,8 +87,8 @@ The name will be `pass-key-nnnn.enc`, where `nnnn` will be a random value betwee
 The name of the secret passphrase can also be defined by the user, using the `--secret` option
 (it will be left unmodified):
 
-* if it does not exist a random secure one will be created, used for encryption, 
-  then encrypted and saved with the given path, while the plain-text temporary version securely 
+* if it does not exist a random secure one will be created, used for encryption,
+  then encrypted and saved with the given path, while the plain-text temporary version securely
   destroyed; OR
 
 * if it is the name of an already existing file, it will be decrypted, used to encrypt the file,
@@ -117,7 +113,7 @@ a new line will be appended at the end; any comments will be left unchanged.
 
 ### keypair generation
 
-We do not provide the means to generate them (this will be done at a later stage), but for now 
+We do not provide the means to generate them (this will be done at a later stage), but for now
 they can be generated using:
 
     openssl genrsa -out ./key.pem 2048
@@ -127,17 +123,13 @@ their path can then be specified in the `conf.yaml` file.
 
 ### encryption
 
-Always use the `--help` option to see the most up-to-date options available; anyway, the basic
-usage is:
+Always use the `--help` option to see the most up-to-date options available; anyway, the basic usage is:
 
     encrypt my_secret.txt
 
-which will create a `my_secret.txt.enc` file in the current directory, unless a different one has
-been specified using the `out` option in `/etc/filecrypt/conf.yml`.
+which will create a `my_secret.txt.enc` file in the current directory, unless a different one has been specified using the `out` option in `/etc/filecrypt/conf.yml`.
 
-A completely random and cryptographically secure key will have been created; used; and 
-then encrypted to the `secrets` location, its full path stored in the CSV keystore
-named in the `store` option of the YAML configuration file.
+A completely random and cryptographically secure key will have been created; used; and then encrypted to the `secrets` location, its full path stored in the CSV keystore named in the `store` option of the YAML configuration file.
 
 Finally, the plaintext version of this key will have been safely destroyed.
 
@@ -145,9 +137,7 @@ A more elaborate one (see the example configuration in `examples/example_conf.ya
 
     encrypt -f example_conf.yaml -s secret-key.enc plaintext.txt
 
-will create an encrypted copy of the file to be stored as `/data/store/plaintext.txt.enc`;
-the original file __will not__ be securely destroyed (using `shred`); and the encryption key 
-name and location (the current directory, and `secret-key.enc`) to be stored in the `keys.csv` file:
+will create an encrypted copy of the file to be stored as `/data/store/plaintext.txt.enc`; the original file __will not__ be securely destroyed (using `shred`); and the encryption key name and location (the current directory, and `secret-key.enc`) to be stored in the `keys.csv` file:
 
 ```yaml
 # Fragment of example_conf.yaml
@@ -159,12 +149,9 @@ shred: false
 
 __Specifying the encryption destination__
 
-By default, the encrypted filename has the same name as the plaintext file, with the `.enc` 
-extension appended; and it is saved to either the current directory or the `out` location 
-specified in the configuration YAML.
+By default, the encrypted filename has the same name as the plaintext file, with the `.enc` extension appended; and it is saved to either the current directory or the `out` location specified in the configuration YAML.
 
-By using the `--out` (`-o`) option, it is possible to specify the location of the output 
-encrypted file, either absolute, or relative to the current directory:
+By using the `--out` (`-o`) option, it is possible to specify the location of the output encrypted file, either absolute, or relative to the current directory:
 
     encrypt -o mysecret.ser my_secret.doc
 
@@ -172,9 +159,7 @@ or:
 
     encrypt -o secret/files/mysecret.ser my_secret.doc
 
-Regardless of the means of specifying the input/outpup files, the full path to both files will 
-__always__ be used in the CSV keystore, regardless of whether a relative or absolute
-path was specified on the command line.
+Regardless of the means of specifying the input/outpup files, the full path to both files will __always__ be used in the CSV keystore, regardless of whether a relative or absolute path was specified on the command line.
 
 
 __IMPORTANT__
@@ -184,13 +169,11 @@ __IMPORTANT__
 
 ### decryption
 
-To decrypt a file that has been encrypted using this utility, `decrypt` and pass the name of the 
-encrypted file; it will be decrypted using the passed-in secret key (`-s` flag):
+To decrypt a file that has been encrypted using this utility, `decrypt` and pass the name of the encrypted file; it will be decrypted using the passed-in secret key (`-s` flag):
 
     decrypt -f example_conf.yaml -s secret-key.enc plaintext.txt
 
-If the encryption key (`--secret` or `-s`) is not specified, then the application will try and 
-locate the plaintext file in the keystore specified in the `conf.yaml` using the `store` key:
+If the encryption key (`--secret` or `-s`) is not specified, then the application will try and locate the plaintext file in the keystore specified in the `conf.yaml` using the `store` key:
 
 ```yaml
 store: keys.csv
@@ -198,25 +181,40 @@ store: keys.csv
 ```
 and derive the location of the encryption key from the entry, if one is found.
 
-Please note that __the full absolute path must match__ even if only a relative path was given at 
-the command line, as files are always stored with their full path when saved to the key store.
+Please note that __the full absolute path must match__ even if only a relative path was given at the command line, as files are always stored with their full path when saved to the key store.
 
-As with encryption, the `--out` flag can be used to specify the output file; otherwise, the 
-current directory will be used.
+As with encryption, the `--out` flag can be used to specify the output file; otherwise, the current directory will be used.
 
-The encrypted file will be left untouched: the `--keep` flag _may_ be used, but will have no 
-effect and the value of the `shred:` option will be ignored.
+The encrypted file will be left untouched: the `--keep` flag _may_ be used, but will have no effect and the value of the `shred:` option will be ignored.
 
-As the encrypted file is already cryptographically secure a simple `rm my_secret.doc.enc` will be
-sufficient to guarantee privacy.
+As the encrypted file is already cryptographically secure a simple `rm my_secret.doc.enc` will be sufficient to guarantee privacy.
+
+### sharing files
+
+As of `0.5.x`, `crytto` supports encrypting a file using solely a Public Key, and then the resulting ecnrypted file can be securely decrypted by the owner of the Secret Key.
+
+The main use case is to enable Alice to send Bob an encrypted file, once Bob has given her a copy of his Public key; call the latter `bob.pub` and the file to share `my_secret.txt`, then Alice can execute:
+
+    encrypt_send --key bob.pub --out my-secret.ser my_secret.txt
+
+after encryption, in the current directory there will be the following two new files:
+
+    my-secret.ser
+    pass-key-000854.enc
+
+the former is the encrypted contents of `my_secret.txt` and the latter the encrypted passphrase (leaving out the `--out` argument would have made the encrypted file's name `my_secret.txt.enc`).
+
+Those files can be both sent to Bob or, even better, provided to him separately for added security; either way, upon receiving them, Bob can run the following (we assume the `bob.pub` was the private half of the configured key pair that he keeps in his [configuration file](#configuration)):
+
+    decrypt -s pass-key-000854.enc --out alice_secret.txt my-secret.ser
+
+(again, leaving out the `--out` is useful when using the defaults, as the `my_secret.txt.enc` would have turned back into `my_secret.txt` -- in this case, the plaintext decrypted file would have been called `my-secret.ser.out`).
 
 ### pruning
 
-The keystore may grow very large and entries may become obsolete, as files are deleted: using the
- `prune_store` script (optionally, giving it the name of the keystore to prune) all entries where
-  either of the files are no longer existing will be removed.
+The keystore may grow very large and entries may become obsolete, as files are deleted: using the `prune_store` script (optionally, giving it the name of the keystore to prune) all entries where  either of the files are no longer existing will be removed.
 
-__This command may lead to data loss__, however, a copy of the keystore is backed up with the 
+__This command may lead to data loss__, however, a copy of the keystore is backed up with the
 `.bak` extension.
 
 __Note__

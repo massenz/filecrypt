@@ -245,7 +245,7 @@ def entrypoint(should_encrypt):
     check_version()
     try:
         config = parse_args()
-        should_encrypt(config, should_encrypt=should_encrypt)
+        encrypt(config, should_encrypt=should_encrypt)
     except Exception as ex:
         print("[ERROR] Could not complete execution:", ex)
         exit(1)
@@ -269,7 +269,12 @@ def send_cmd():
         if not config.pubkey:
             print("[ERROR] A valid Public key must be defined using the --pubkey option")
             exit(1)
-        encrypt_to_send(config.infile, config.pubkey, config.out)
+        dest, secret, enc_file = encrypt_to_send(config.infile, config.pubkey, config.out)
+        print("File {plain} encrypted to {enc} - encryption key in: {secret}".format(
+            plain=config.infile,
+            enc=enc_file,
+            secret=secret
+        ))
     except Exception as ex:
         print("[ERROR] Could not complete execution:", ex)
         exit(1)

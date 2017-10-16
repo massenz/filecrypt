@@ -33,5 +33,8 @@ if '-d' in sys.argv:
 elif 'prune' in sys.argv:
     sys.argv.remove("prune")
     crytto.main.prune_cmd()
+elif 'send' in sys.argv:
+    sys.argv.remove('send')
+    crytto.main.send_cmd()
 else:
     crytto.main.entrypoint(True)
