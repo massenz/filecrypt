@@ -31,7 +31,7 @@ class KeystoreManagerTests(common.TestBase):
         self.assertEqual('/data/20160827_snapshot.tar.gz.enc', ll.encrypted)
 
     def test_fails_with_nofile(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(FileNotFoundError):
             store = KeystoreManager('/foo/bar')
 
     def test_add_entry(self):

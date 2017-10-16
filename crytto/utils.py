@@ -18,6 +18,8 @@ import csv
 import logging
 import os
 from tempfile import mkstemp
+
+import time
 import yaml
 
 from sh import (
@@ -194,7 +196,9 @@ class KeystoreManager(object):
 
     def __init__(self, filestore):
         if not os.path.exists(filestore):
-            raise ValueError("{} does not exist".format(filestore))
+            # The keystore needs creating.
+            with open(filestore, 'wt') as keystore:
+                keystore.write('# Crytto keystore file, created at: {}'.format(time.ctime()))
         self.filestore = os.path.abspath(filestore)
 
     def lookup(self, filename):
