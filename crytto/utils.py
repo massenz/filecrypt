@@ -172,6 +172,7 @@ def shred(filename):
         raise RuntimeError("Could not securely destroy '%s' (%d): %s", filename,
                            rcode.exit_code, rcode.stderr)
 
+
 Keypair = namedtuple('Keypair', ['private', 'public'])
 
 KeystoreEntry = namedtuple('KeystoreEntry', ['secret', 'encrypted'])
@@ -194,12 +195,14 @@ class KeystoreManager(object):
     will return only __the first match__; this is by design and is a known limitation.
     """
 
-    def __init__(self, filestore):
+    def __init__(self, filestore, verbose=False):
         if not os.path.exists(filestore):
             # The keystore needs creating.
             with open(filestore, 'wt') as keystore:
                 keystore.write('# Crytto keystore file, created at: {}'.format(time.ctime()))
         self.filestore = os.path.abspath(filestore)
+        self._log = logging.getLogger(self.__class__.__name__)
+        self._log.setLevel(logging.DEBUG if verbose else logging.INFO)
 
     def lookup(self, filename):
         """Looks up for the given filename for any entry and returns the row contents.
@@ -254,20 +257,44 @@ class KeystoreManager(object):
                         found = True
         return found
 
-    def prune(self):
+    def prune(self, alt_dir=None):
         """ Cleans up entries that no longer exist.
 
         If either the key or the encrypted file have been removed from the system, the relative
         row will be removed from the backing store.
 
         A copy of the keystore will be kept in a same-named file, with a ```.bak``` suffix.
+
+        :param alt_dir: an alternate location to check for the files' existence
+        :type alt_dir: str
         """
         backup = self.filestore + '.bak'
         os.rename(self.filestore, backup)
+        lineno = 0
         with open(backup, 'rt') as old:
             reader = csv.reader(old)
             with open(self.filestore, 'wt') as store:
                 writer = csv.writer(store)
                 for row in reader:
-                    if row[0].startswith('#') or (os.path.exists(row[0]) and os.path.exists(row[1])):
+                    lineno += 1
+                    if not row:
+                        self._log.warning("Unexpected empty line: {}".format(lineno))
+                        continue
+                    # We preserve comments.
+                    if row[0].startswith('#'):
                         writer.writerow(row)
+                        continue
+                    if len(row) != 2:
+                        self._log.error("Line {} does not match pattern (key, file): removed. "
+                                        "{}".format(lineno, row))
+                        continue
+                    encryption_key_exists = os.path.exists(row[0])
+                    encrypted_file_exists = os.path.exists(row[1])
+                    if alt_dir:
+                        alt_file = os.path.join(alt_dir, os.path.basename(row[1]))
+                        encrypted_file_exists = encrypted_file_exists or os.path.exists(alt_file)
+                    if encryption_key_exists and encrypted_file_exists:
+                        writer.writerow(row)
+                    else:
+                        print(">>>>>>>>>>>>", row)
+                        self._log.debug("Line {}: pruned".format(lineno))

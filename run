@@ -16,8 +16,13 @@ This is just for development purposes, users ought to instead
 install crytto from PyPi and use ```encrypt``` or ```decrypt``` console
 entry points.
 
-This takes exactly the same CLI args as described in the README, however, if
-used to decrypt, add the `-d` flag (which will be removed prior to running ```encrypt```).
+This takes exactly the same CLI args as described in the README; plus an additional "selector" 
+used to choose which command to run:
+
+    - decrypt;
+    - prune;
+    - send; or
+    - nothing, which will run the encrypt command.
 """
 
 # Adds this file's directory to the PYTHONPATH.
@@ -27,8 +32,8 @@ sys.path.append(dirname)
 
 import crytto.main
 
-if '-d' in sys.argv:
-    sys.argv.remove('-d')
+if 'decrypt' in sys.argv:
+    sys.argv.remove('decrypt')
     crytto.main.entrypoint(False)
 elif 'prune' in sys.argv:
     sys.argv.remove("prune")

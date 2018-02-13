@@ -22,6 +22,7 @@ See the [README](https://github.com/massenz/crytto) for more details.
 """
 
 import argparse
+import logging
 import os
 import random
 import sys
@@ -281,13 +282,33 @@ def send_cmd():
 
 
 def prune_cmd():
-    if len(sys.argv) < 2:
-        enc_cfg = EncryptConfiguration(conf_file=FILECRYPT_CONF_YML)
-        store = enc_cfg.store
-    else:
-        store = sys.argv[1]
-    keystore = KeystoreManager(store)
-    keystore.prune()
-    print("Keystore {} has been pruned; a backup copy has been kept in {}".format(
-        keystore.filestore, keystore.filestore + '.bak'))
+    """Prunes the keystore of unused keys (those that were used to encrypt files that no longer
+    exist).
+
+    Takes two arguments, both optional:
+
+        - a keystore file (which will be pruned); and
+        - a working directory to check for files' existence.
+
+    If the `keystore` is not defined, the one configured in the defaul YAML configuration file
+    will be used; if a `working directory` is not specified, only the location of the file as
+    reported in the keystore will be checked.
+    """
+    enc_cfg = EncryptConfiguration(conf_file=FILECRYPT_CONF_YML)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--keystore', '-k', default=enc_cfg.store, help="The keystore to prune")
+    parser.add_argument('--workdir', '-d', help="Alternative location to check for files")
+    parser.add_argument('-v', dest='verbose', action='store_true', help="Verbose logging")
+    cli_args = parser.parse_args()
+
+    try:
+        if not os.path.exists(cli_args.keystore):
+            raise ValueError("File {} does not exist".format(cli_args.keystore))
+        keystore = KeystoreManager(cli_args.keystore, cli_args.verbose)
+        keystore.prune(alt_dir=cli_args.workdir)
+
+        print("Keystore {} has been pruned; a backup copy has been kept in {}".format(
+            keystore.filestore, keystore.filestore + '.bak'))
+    except Exception as ex:
+        print("[ERROR] Could not prune {}: {}".format(cli_args.keystore, ex))
 
