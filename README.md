@@ -1,18 +1,18 @@
 
 # filecrypt - OpenSSL file encryption
 
-Author  | [M. Massenzio](https://github.com/massenz)
+Author  | [M. Massenzio](http://codetrips.com)
  -------|-----------
-Version | 0.5.0
-Updated | 2017-10-15
-Code    | [github](https://github.com/massenz/filecrypt)
+Version | 0.6.1
+Updated | 2018-06-09
+Code    | [bitbucket.org](git@bitbucket.org:marco/filecrypt.git)
 
 
 # overview
 
 Uses OpenSSL library to encrypt a file using a private/public key pair and a one-time secret.
 
-A full description of the process can be found [here][how-to].
+A full description of the process can be found [here](https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst).
 
 See also this [blog entry](https://codetrips.com/2016/07/13/filecrypt-openssl-file-encryption/) for more details.
 
@@ -30,7 +30,9 @@ This requires OpenSSL to be installed on your machine:
 
 Alternatively, clone the project from github and follow the instructions below:
 
-    git clone git@github.com:massenz/filecrypt.git
+    git clone git@bitbucket.org:marco/filecrypt.git
+
+__Note__ I moved the code to [bitbucket](http://bitbucket.org): Micro$oft can kiss my b--t...
 
 Once cloned, you can try out functionality using the `run` script (which replaces the `console-scripts` installed by the package) which takes the same arguments as the [encryption] (#encryption) command; or adding a `-d` flag, will execute the [decryption](#decryption) command.
 
@@ -223,11 +225,7 @@ For Decryption, we will not use the value of the `out:` flag in the YAML configu
 
 ## references
 
-* a [detailed HOW-TO](how-to) with the steps to encrypt a file manually;
-* the original [Ask Ubuntu][ask-ubuntu] post;
+* a [detailed HOW-TO](https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst) with the steps to encrypt a file manually;
+* the original [Ask Ubuntu](http://askubuntu.com/questions/95920/encrypt-tar-gz-file-on-create) post;
 * [OpenSSL](https://openssl.org);
-* [Ubuntu guide to OpenSSL][ubuntu openssl].
-
-[how-to]: https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst
-[ask-ubuntu]: http://askubuntu.com/questions/95920/encrypt-tar-gz-file-on-create
-[ubuntu openssl]: https://help.ubuntu.com/community/OpenSSL
+* [Ubuntu guide to OpenSSL](https://help.ubuntu.com/community/OpenSSL).
