@@ -28,21 +28,27 @@ import random
 import sys
 
 from crytto.filecrypt import FileCrypto
-from crytto.utils import (SelfDestructKey,
-                          shred,
-                          KeystoreManager,
-                          KeystoreEntry, EncryptConfiguration, Keypair)
+from crytto.utils import (
+    SelfDestructKey,
+    shred,
+    KeystoreManager,
+    KeystoreEntry,
+    EncryptConfiguration,
+    Keypair,
+)
 
 
 DEFAULT_CONF_FILE = "conf.yml"
 DEFAULT_CONF_DIF = ".crytto"
-FILECRYPT_CONF_YML = os.path.join(os.getenv('HOME'), DEFAULT_CONF_DIF, DEFAULT_CONF_FILE)
+FILECRYPT_CONF_YML = os.path.join(os.getenv("HOME"), DEFAULT_CONF_DIF, DEFAULT_CONF_FILE)
 
 
 def check_version():
     if sys.version_info < (3, 0):
-        print("Python 3.0 or greater required (3.5 recommended). Please consider upgrading or "
-              "using a virtual environment.")
+        print(
+            "Python 3.0 or greater required (3.5 recommended). Please consider upgrading or "
+            "using a virtual environment."
+        )
         sys.exit(1)
 
 
@@ -119,32 +125,50 @@ def parse_args():
     :rtype Namespace
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', dest='conf_file', default=FILECRYPT_CONF_YML,
-                        help="The location of the YAML configuration file, if different from "
-                             "the default {}.".format(FILECRYPT_CONF_YML))
+    parser.add_argument(
+        "-f",
+        dest="conf_file",
+        default=FILECRYPT_CONF_YML,
+        help="The location of the YAML configuration file, if different from "
+        "the default {}.".format(FILECRYPT_CONF_YML),
+    )
 
-    parser.add_argument('-k', '--keep', action='store_true',
-                        help="Keep the plaintext file. Overriddes the 'shred' option in the "
-                             "configuration YAML.")
+    parser.add_argument(
+        "-k",
+        "--keep",
+        action="store_true",
+        help="Keep the plaintext file. Overriddes the 'shred' option in the " "configuration YAML.",
+    )
 
-    parser.add_argument('-o', '--out',
-                        help="The output file, overrides the default naming and the location "
-                             "defined in the YAML configuration file.")
+    parser.add_argument(
+        "-o",
+        "--out",
+        help="The output file, overrides the default naming and the location "
+        "defined in the YAML configuration file.",
+    )
 
-    parser.add_argument('-p', '--pubkey',
-                        help="Only used for the encrypt_send command, to specify a Public key "
-                             "shared by the recipient; otherwise ignored.")
+    parser.add_argument(
+        "-p",
+        "--pubkey",
+        help="Only used for the encrypt_send command, to specify a Public key "
+        "shared by the recipient; otherwise ignored.",
+    )
 
-    parser.add_argument('-s', '--secret',
-                        help="The full path of the ENCRYPTED passphrase to use to encrypt the "
-                             "file; it will be left unmodified on disk.")
+    parser.add_argument(
+        "-s",
+        "--secret",
+        help="The full path of the ENCRYPTED passphrase to use to encrypt the "
+        "file; it will be left unmodified on disk.",
+    )
 
-    parser.add_argument('-w', '--force', action='store_true',
-                        help="If specified, the destination file will be overwritten if it "
-                             "already exists.")
+    parser.add_argument(
+        "-w",
+        "--force",
+        action="store_true",
+        help="If specified, the destination file will be overwritten if it " "already exists.",
+    )
 
-    parser.add_argument('infile',
-                        help="The file that will be securely encrypted or decrypted.")
+    parser.add_argument("infile", help="The file that will be securely encrypted or decrypted.")
     return parser.parse_args()
 
 
@@ -160,11 +184,16 @@ def encrypt(cfg, should_encrypt=True):
 
     # The secret can be defined in several ways, depending also if it's an encryption or
     # decryption that is required, etc. - best left to a specialized method.
-    secret = establish_secret(cfg.secret, enc_cfg.secrets_dir, keystore, cfg.infile, not should_encrypt)
+    secret = establish_secret(
+        cfg.secret, enc_cfg.secrets_dir, keystore, cfg.infile, not should_encrypt
+    )
 
     if not secret:
-        raise RuntimeError("Could not locate a suitable decryption key for {}; keystore: {}".format(
-            cfg.infile, keystore.filestore))
+        raise RuntimeError(
+            "Could not locate a suitable decryption key for {}; keystore: {}".format(
+                cfg.infile, keystore.filestore
+            )
+        )
 
     passphrase = SelfDestructKey(secret, keypair=keys)
     enc_cfg.log.info("Using '%s' as the encryption secret", passphrase.keyfile)
@@ -175,13 +204,15 @@ def encrypt(cfg, should_encrypt=True):
     plaintext = cfg.infile if should_encrypt else cfg.out
     encrypted = cfg.out if should_encrypt else cfg.infile
 
-    encryptor = FileCrypto(encrypt=should_encrypt,
-                           secret=passphrase,
-                           plain_file=plaintext,
-                           encrypted_file=encrypted,
-                           dest_dir=enc_cfg.out,
-                           force=cfg.force,
-                           log=enc_cfg.log)
+    encryptor = FileCrypto(
+        encrypt=should_encrypt,
+        secret=passphrase,
+        plain_file=plaintext,
+        encrypted_file=encrypted,
+        dest_dir=enc_cfg.out,
+        force=cfg.force,
+        log=enc_cfg.log,
+    )
     encryptor()
 
     if should_encrypt:
@@ -216,14 +247,13 @@ def encrypt_to_send(file_to_encrypt, pubkey, dest=None):
     :rtype: tuple
     """
     if not (os.path.exists(file_to_encrypt) and os.path.exists(pubkey)):
-        raise ValueError("{} and {} must both exist, nothing to do".format(
-            file_to_encrypt, pubkey))
+        raise ValueError("{} and {} must both exist, nothing to do".format(file_to_encrypt, pubkey))
 
     if not dest:
         dest = os.getcwd()
 
     if os.path.isdir(dest):
-        outfile = file_to_encrypt + '.enc'
+        outfile = file_to_encrypt + ".enc"
     else:
         dest, outfile = os.path.split(dest)
         if not os.path.isdir(dest):
@@ -232,11 +262,13 @@ def encrypt_to_send(file_to_encrypt, pubkey, dest=None):
     key = Keypair(private=None, public=pubkey)
     secret = create_secret_filename(dest)
     passphrase = SelfDestructKey(secret, key)
-    encryptor = FileCrypto(secret=passphrase,
-                           plain_file=file_to_encrypt,
-                           dest_dir=dest,
-                           encrypted_file=outfile,
-                           force=True)
+    encryptor = FileCrypto(
+        secret=passphrase,
+        plain_file=file_to_encrypt,
+        dest_dir=dest,
+        encrypted_file=outfile,
+        force=True,
+    )
     encryptor()
     return dest, secret, os.path.join(dest, outfile)
 
@@ -271,11 +303,11 @@ def send_cmd():
             print("[ERROR] A valid Public key must be defined using the --pubkey option")
             exit(1)
         dest, secret, enc_file = encrypt_to_send(config.infile, config.pubkey, config.out)
-        print("File {plain} encrypted to {enc} - encryption key in: {secret}".format(
-            plain=config.infile,
-            enc=enc_file,
-            secret=secret
-        ))
+        print(
+            "File {plain} encrypted to {enc} - encryption key in: {secret}".format(
+                plain=config.infile, enc=enc_file, secret=secret
+            )
+        )
     except Exception as ex:
         print("[ERROR] Could not complete execution:", ex)
         exit(1)
@@ -296,9 +328,9 @@ def prune_cmd():
     """
     enc_cfg = EncryptConfiguration(conf_file=FILECRYPT_CONF_YML)
     parser = argparse.ArgumentParser()
-    parser.add_argument('--keystore', '-k', default=enc_cfg.store, help="The keystore to prune")
-    parser.add_argument('--workdir', '-d', help="Alternative location to check for files")
-    parser.add_argument('-v', dest='verbose', action='store_true', help="Verbose logging")
+    parser.add_argument("--keystore", "-k", default=enc_cfg.store, help="The keystore to prune")
+    parser.add_argument("--workdir", "-d", help="Alternative location to check for files")
+    parser.add_argument("-v", dest="verbose", action="store_true", help="Verbose logging")
     cli_args = parser.parse_args()
 
     try:
@@ -307,8 +339,10 @@ def prune_cmd():
         keystore = KeystoreManager(cli_args.keystore, cli_args.verbose)
         keystore.prune(alt_dir=cli_args.workdir)
 
-        print("Keystore {} has been pruned; a backup copy has been kept in {}".format(
-            keystore.filestore, keystore.filestore + '.bak'))
+        print(
+            "Keystore {} has been pruned; a backup copy has been kept in {}".format(
+                keystore.filestore, keystore.filestore + ".bak"
+            )
+        )
     except Exception as ex:
         print("[ERROR] Could not prune {}: {}".format(cli_args.keystore, ex))
-

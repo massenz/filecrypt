@@ -11,14 +11,15 @@ from tests.common import TestBase
 
 
 class EndToEndTests(TestBase):
-
     def setUp(self):
         super().setUp()
         self.plaintext = os.path.join(self.data_dir, "plain.txt")
-        self.keyPair = Keypair(private=os.path.join(self.data_dir, "test.pem"),
-                               public=os.path.join(self.data_dir, "test.pub"))
-        self.secret = self.temp_filename(suffix='.key')
-        self.encrypted = self.temp_filename(suffix='.enc')
+        self.keyPair = Keypair(
+            private=os.path.join(self.data_dir, "test.pem"),
+            public=os.path.join(self.data_dir, "test.pub"),
+        )
+        self.secret = self.temp_filename(suffix=".key")
+        self.encrypted = self.temp_filename(suffix=".enc")
 
     def tearDown(self):
         if os.path.exists(self.encrypted):
@@ -28,9 +29,7 @@ class EndToEndTests(TestBase):
 
     def test_encrypt(self):
         key = SelfDestructKey(self.secret, keypair=self.keyPair)
-        encrypt = FileCrypto(secret=key,
-                             plain_file=self.plaintext,
-                             encrypted_file=self.encrypted)
+        encrypt = FileCrypto(secret=key, plain_file=self.plaintext, encrypted_file=self.encrypted)
 
         self.assertTrue(encrypt())
         self.assertTrue(os.path.exists(self.encrypted))
@@ -39,15 +38,17 @@ class EndToEndTests(TestBase):
         key._save()
         self.assertTrue(os.path.exists(self.secret))
 
-        restored_file = tempfile.mkstemp(suffix='.txt')[1]
+        restored_file = tempfile.mkstemp(suffix=".txt")[1]
 
         # We must set force=True because `mkstemp()` will create an empty file and,
         # without forcing it, FileCrypto will refuse to overwrite it.
-        decrypt = FileCrypto(secret=SelfDestructKey(self.secret, keypair=self.keyPair),
-                             plain_file=restored_file,
-                             encrypted_file=self.encrypted,
-                             encrypt=False,
-                             force=True)
+        decrypt = FileCrypto(
+            secret=SelfDestructKey(self.secret, keypair=self.keyPair),
+            plain_file=restored_file,
+            encrypted_file=self.encrypted,
+            encrypt=False,
+            force=True,
+        )
         self.assertTrue(decrypt())
         with open(self.plaintext) as expected:
             with open(restored_file) as actual:

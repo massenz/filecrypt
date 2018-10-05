@@ -13,5 +13,5 @@
 # limitations under the License.
 
 
-__author__ = 'Marco Massenzio'
-__email__ = 'marco@alertavert.com'
+__author__ = "Marco Massenzio"
+__email__ = "marco@alertavert.com"

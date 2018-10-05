@@ -25,30 +25,21 @@ class TestSend(TestBase):
         super().setUp()
         self.plaintext = os.path.join(self.data_dir, "plain.txt")
         self.pubkey = os.path.join(self.data_dir, "test.pub")
-        self.encrypted = os.path.join(self.data_dir, 'plain.txt.enc')
-        self.conf = os.path.join(self.data_dir, 'test.yml')
+        self.encrypted = os.path.join(self.data_dir, "plain.txt.enc")
+        self.conf = os.path.join(self.data_dir, "test.yml")
 
     def tearDown(self):
         if os.path.exists(self.encrypted):
             os.remove(self.encrypted)
 
     def make_fake_cli_opts(self, secret, infile, outfile):
-        args = [
-            '--secret',
-            '--conf-file',
-            '--out',
-            '--keep',
-            'infile',
-            '--force',
-        ]
+        args = ["--secret", "--conf-file", "--out", "--keep", "infile", "--force"]
         fakeparser = argparse.ArgumentParser()
         for arg in args:
             fakeparser.add_argument(arg)
-        return fakeparser.parse_args(['--secret', secret,
-                                      '--conf-file', self.conf,
-                                      '--out', outfile,
-                                      infile,
-                                      ])
+        return fakeparser.parse_args(
+            ["--secret", secret, "--conf-file", self.conf, "--out", outfile, infile]
+        )
 
     def test_send(self):
         secret = None
@@ -62,7 +53,7 @@ class TestSend(TestBase):
             self.assertEqual(self.encrypted, os.path.join(dest, outfile))
             self.assertTrue(os.path.exists(self.encrypted))
 
-            decrypted = '/tmp/decrypt.txt'
+            decrypted = "/tmp/decrypt.txt"
             options = self.make_fake_cli_opts(secret, self.encrypted, decrypted)
             encrypt(options, should_encrypt=False)
 

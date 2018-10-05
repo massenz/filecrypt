@@ -22,17 +22,13 @@ from tempfile import mkstemp
 import time
 import yaml
 
-from sh import (
-    openssl,
-    ErrorReturnCode,
-    shred as _shred,
-)
+from sh import openssl, ErrorReturnCode, shred as _shred
 
 
 class EncryptConfiguration(object):
 
     DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-    LOG_FORMAT = '%(asctime)s [%(levelname)-5s] %(message)s'
+    LOG_FORMAT = "%(asctime)s [%(levelname)-5s] %(message)s"
 
     def __init__(self, conf_file):
         self.out = None
@@ -53,17 +49,17 @@ class EncryptConfiguration(object):
             configs = yaml.load(cfg)
 
         # First, let's get some logging going.
-        if 'logging' in configs:
-            self._configure_logging(configs.get('logging'))
+        if "logging" in configs:
+            self._configure_logging(configs.get("logging"))
 
-        keys = configs.get('keys')
+        keys = configs.get("keys")
         if not keys:
             self.log.error("The `keys:` section is required, cannot proceed without.")
             raise RuntimeError("Missing `keys` in {}".format(conf_file))
 
-        self.private = keys.get('private')
-        self.public = keys.get('public')
-        self.secrets_dir = keys.get('secrets')
+        self.private = keys.get("private")
+        self.public = keys.get("public")
+        self.secrets_dir = keys.get("secrets")
 
         if not os.path.isdir(self.secrets_dir):
             self.log.warning("Directory '%s' does not exist, trying to create it", self.secrets_dir)
@@ -73,23 +69,24 @@ class EncryptConfiguration(object):
                 self.log.error("Cannot create directory '%s': %s", self.secrets_dir, err)
                 raise RuntimeError(err)
 
-        self.store = configs.get('store')
+        self.store = configs.get("store")
 
         # If the `out` key is not present, the current directory is used.
-        self.out = configs.get('out', os.getcwd())
+        self.out = configs.get("out", os.getcwd())
 
         # Unless otherwise specified, we will securely destroy the original plaintext file.
-        self.shred = configs.get('shred', True)
+        self.shred = configs.get("shred", True)
 
     def _configure_logging(self, log_config):
         handler = logging.StreamHandler()
-        if 'logdir' in log_config:
-            handler = logging.FileHandler(os.path.join(log_config.get('logdir'), 'crytto.log'))
-        formatter = logging.Formatter(fmt=log_config.get('format', EncryptConfiguration.LOG_FORMAT),
-                                      datefmt=log_config.get('datefmt',
-                                                             EncryptConfiguration.DATE_FORMAT))
+        if "logdir" in log_config:
+            handler = logging.FileHandler(os.path.join(log_config.get("logdir"), "crytto.log"))
+        formatter = logging.Formatter(
+            fmt=log_config.get("format", EncryptConfiguration.LOG_FORMAT),
+            datefmt=log_config.get("datefmt", EncryptConfiguration.DATE_FORMAT),
+        )
         handler.setFormatter(formatter)
-        self._log.setLevel(log_config.get('level', 'WARN'))
+        self._log.setLevel(log_config.get("level", "WARN"))
         self._log.addHandler(handler)
         self.log.debug("Logging configuration complete")
 
@@ -120,11 +117,17 @@ class SelfDestructKey(object):
         self.encrypted = encrypted_key
         self.key_pair = keypair
         if not os.path.exists(encrypted_key):
-            openssl('rand', '-out', self._plaintext, '32')
+            openssl("rand", "-out", self._plaintext, "32")
         else:
-            with open(encrypted_key, 'rb') as secret:
-                openssl('rsautl', '-decrypt', '-inkey', keypair.private,
-                        _in=secret, _out=self._plaintext)
+            with open(encrypted_key, "rb") as secret:
+                openssl(
+                    "rsautl",
+                    "-decrypt",
+                    "-inkey",
+                    keypair.private,
+                    _in=secret,
+                    _out=self._plaintext,
+                )
 
     @property
     def keyfile(self):
@@ -137,7 +140,7 @@ class SelfDestructKey(object):
         Convenience function to automatically convert this object to something immediately
         usable during decryption.
         """
-        with open(self._plaintext, 'rb') as pf:
+        with open(self._plaintext, "rb") as pf:
             return pf.read()
 
     def __del__(self):
@@ -152,30 +155,42 @@ class SelfDestructKey(object):
                 "We could not shred the plaintext passphrase in file '{plain}' or encrypt it "
                 "to file {enc}.  You will have to securely delete the plaintext "
                 "version using something like `shred -uz {plain}`.".format(
-                    plain=self._plaintext, enc=self.encrypted, err=rcode.stderr.decode("utf-8"),
-                    cmd=rcode.full_cmd))
+                    plain=self._plaintext,
+                    enc=self.encrypted,
+                    err=rcode.stderr.decode("utf-8"),
+                    cmd=rcode.full_cmd,
+                )
+            )
 
     def _save(self):
         """ Encrypts the contents of the key and writes it out to disk. """
         if not os.path.exists(self.key_pair.public):
             raise RuntimeError("Encryption key file '%s' not found" % self.key_pair.public)
-        with open(self._plaintext, 'rb') as selfkey:
-            openssl('rsautl', '-encrypt', '-pubin', '-inkey', self.key_pair.public,
-                    _in=selfkey, _out=self.encrypted)
+        with open(self._plaintext, "rb") as selfkey:
+            openssl(
+                "rsautl",
+                "-encrypt",
+                "-pubin",
+                "-inkey",
+                self.key_pair.public,
+                _in=selfkey,
+                _out=self.encrypted,
+            )
 
 
 def shred(filename):
     """Will securely destroy the `filename` using Linux `shred` utility."""
     try:
-        _shred('-uz', filename)
+        _shred("-uz", filename)
     except ErrorReturnCode as rcode:
-        raise RuntimeError("Could not securely destroy '%s' (%d): %s", filename,
-                           rcode.exit_code, rcode.stderr)
+        raise RuntimeError(
+            "Could not securely destroy '%s' (%d): %s", filename, rcode.exit_code, rcode.stderr
+        )
 
 
-Keypair = namedtuple('Keypair', ['private', 'public'])
+Keypair = namedtuple("Keypair", ["private", "public"])
 
-KeystoreEntry = namedtuple('KeystoreEntry', ['secret', 'encrypted'])
+KeystoreEntry = namedtuple("KeystoreEntry", ["secret", "encrypted"])
 
 
 class KeystoreManager(object):
@@ -198,8 +213,8 @@ class KeystoreManager(object):
     def __init__(self, filestore, verbose=False):
         if not os.path.exists(filestore):
             # The keystore needs creating.
-            with open(filestore, 'wt') as keystore:
-                keystore.write('# Crytto keystore file, created at: {}'.format(time.ctime()))
+            with open(filestore, "wt") as keystore:
+                keystore.write("# Crytto keystore file, created at: {}".format(time.ctime()))
         self.filestore = os.path.abspath(filestore)
         self._log = logging.getLogger(self.__class__.__name__)
         self._log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -214,7 +229,7 @@ class KeystoreManager(object):
         :return: the ``namedtuple`` that represents a row in this store
         :rtype: KeystoreEntry
         """
-        with open(self.filestore, 'rt') as store:
+        with open(self.filestore, "rt") as store:
             reader = csv.reader(store)
             for row in reader:
                 for item in row:
@@ -227,7 +242,7 @@ class KeystoreManager(object):
         :param entry: the tuple containing the plaintext, secret and encrypted filenames.
         :type entry: KeystoreEntry
         """
-        with open(self.filestore, 'at') as store:
+        with open(self.filestore, "at") as store:
             writer = csv.writer(store)
             writer.writerow(entry)
 
@@ -240,18 +255,21 @@ class KeystoreManager(object):
         :return: ```True``` if the entry was successfully removed
         :rtype: bool
         """
-        backup = self.filestore + '.bak'
+        backup = self.filestore + ".bak"
         os.rename(self.filestore, backup)
         found = False
-        with open(backup, 'rt') as old:
+        with open(backup, "rt") as old:
             reader = csv.reader(old)
-            with open(self.filestore, 'wt') as store:
+            with open(self.filestore, "wt") as store:
                 writer = csv.writer(store)
                 for row in reader:
                     existing = KeystoreEntry(*row)
-                    entry_to_remove = entry if isinstance(entry, KeystoreEntry) else KeystoreEntry(
-                        secret=row[0], encrypted=entry)
-                    if existing != entry_to_remove or row[0].startswith('#'):
+                    entry_to_remove = (
+                        entry
+                        if isinstance(entry, KeystoreEntry)
+                        else KeystoreEntry(secret=row[0], encrypted=entry)
+                    )
+                    if existing != entry_to_remove or row[0].startswith("#"):
                         writer.writerow(row)
                     else:
                         found = True
@@ -268,12 +286,12 @@ class KeystoreManager(object):
         :param alt_dir: an alternate location to check for the files' existence
         :type alt_dir: str
         """
-        backup = self.filestore + '.bak'
+        backup = self.filestore + ".bak"
         os.rename(self.filestore, backup)
         lineno = 0
-        with open(backup, 'rt') as old:
+        with open(backup, "rt") as old:
             reader = csv.reader(old)
-            with open(self.filestore, 'wt') as store:
+            with open(self.filestore, "wt") as store:
                 writer = csv.writer(store)
                 for row in reader:
                     lineno += 1
@@ -281,12 +299,14 @@ class KeystoreManager(object):
                         self._log.warning("Unexpected empty line: {}".format(lineno))
                         continue
                     # We preserve comments.
-                    if row[0].startswith('#'):
+                    if row[0].startswith("#"):
                         writer.writerow(row)
                         continue
                     if len(row) != 2:
-                        self._log.error("Line {} does not match pattern (key, file): removed. "
-                                        "{}".format(lineno, row))
+                        self._log.error(
+                            "Line {} does not match pattern (key, file): removed. "
+                            "{}".format(lineno, row)
+                        )
                         continue
                     encryption_key_exists = os.path.exists(row[0])
                     encrypted_file_exists = os.path.exists(row[1])
