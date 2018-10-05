@@ -9,15 +9,16 @@ from tests.common import TestBase
 
 
 class SelfDestructKeyTests(TestBase):
-
     def tearDown(self):
         if hasattr(self, "tempKey"):
             os.remove(self.tempKey)
 
     def test_key(self):
-        keys = Keypair(private=os.path.join(self.data_dir, "test.pem"),
-                       public=os.path.join(self.data_dir, "test.pub"))
-        self.tempKey = self.temp_filename(suffix='.key')
+        keys = Keypair(
+            private=os.path.join(self.data_dir, "test.pem"),
+            public=os.path.join(self.data_dir, "test.pub"),
+        )
+        self.tempKey = self.temp_filename(suffix=".key")
         self.assertFalse(os.path.exists(self.tempKey))
 
         key = SelfDestructKey(self.tempKey, keys)
@@ -38,6 +39,3 @@ class SelfDestructKeyTests(TestBase):
 
         # And assert that the decrypted passphrase matches.
         self.assertEqual(passphrase, bytes(key))
-
-
-

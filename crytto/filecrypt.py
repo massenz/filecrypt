@@ -23,8 +23,17 @@ class FileCrypto(object):
         More details can be found at:
         https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst
     """
-    def __init__(self, secret, plain_file=None, encrypted_file=None, dest_dir=None,
-                 encrypt=True, force=False, log=logging):
+
+    def __init__(
+        self,
+        secret,
+        plain_file=None,
+        encrypted_file=None,
+        dest_dir=None,
+        encrypt=True,
+        force=False,
+        log=logging,
+    ):
         """ Initializes an encryptor.
 
         Either one of ```plain_file``` or ```encrypted_file``` __must__ be specified: if only one is
@@ -74,8 +83,8 @@ class FileCrypto(object):
         if not (plain_file or encrypted_file):
             raise ValueError("Either one of `plain_file` or `encrypted_file` MUST be specified")
 
-        self.plain_file = plain_file or os.path.basename(encrypted_file).strip('.enc')
-        self.encrypted_file = encrypted_file or '{}.enc'.format(os.path.basename(plain_file))
+        self.plain_file = plain_file or os.path.basename(encrypted_file).strip(".enc")
+        self.encrypted_file = encrypted_file or "{}.enc".format(os.path.basename(plain_file))
         self._log.debug("Plaintext file: {}, Encrypted file: {}".format(plain_file, encrypted_file))
 
     def _check(self):
@@ -94,14 +103,17 @@ class FileCrypto(object):
             if not encrypt_exists:
                 err_msg = "Could not find the encrypted file '{}'. ".format(self.encrypted_file)
             if plaintext_exists and not self.overwrite:
-                err_msg += "The plaintext file '{}' already exists and --force was not " \
-                           "specified. ".format(self.plain_file)
+                err_msg += (
+                    "The plaintext file '{}' already exists and --force was not "
+                    "specified. ".format(self.plain_file)
+                )
 
         if not os.path.isdir(self.dest):
             err_msg += "Destination directory '{}' does not exist. ".format(self.dest)
         if not os.path.exists(self.secret.keyfile):
             err_msg += "Encryption key/passphrase file '{}' does not exist".format(
-                self.secret.keyfile)
+                self.secret.keyfile
+            )
 
         if err_msg:
             raise RuntimeError("Cannot process {}: {}".format(self.plain_file, err_msg))
@@ -114,8 +126,9 @@ class FileCrypto(object):
             return self._encrypt() if self.encrypt else self._decrypt()
 
         except ErrorReturnCode as rcode:
-            self._log.error("%s failed (%d): %s", action, rcode.exit_code,
-                            rcode.stderr.decode("utf-8"))
+            self._log.error(
+                "%s failed (%d): %s", action, rcode.exit_code, rcode.stderr.decode("utf-8")
+            )
         except Exception as ex:
             self._log.error("Could not execute %s: %s", action, ex)
 
@@ -133,11 +146,15 @@ class FileCrypto(object):
         self._outfile = os.path.join(self.dest, self.encrypted_file)
         self._infile = self.plain_file
         self._log.info("Encrypting '%s' to '%s'", self.plain_file, self._outfile)
-        with open(self.plain_file, 'rb') as plain_file:
-            openssl('enc', '-aes-256-cbc', '-pass',
-                    'file:{secret}'.format(secret=self.secret.keyfile),
-                    _in=plain_file,
-                    _out=self._outfile)
+        with open(self.plain_file, "rb") as plain_file:
+            openssl(
+                "enc",
+                "-aes-256-cbc",
+                "-pass",
+                "file:{secret}".format(secret=self.secret.keyfile),
+                _in=plain_file,
+                _out=self._outfile,
+            )
         self._log.info("File '%s' encrypted to '%s'", self.plain_file, self._outfile)
         return True
 
@@ -153,11 +170,16 @@ class FileCrypto(object):
         self._outfile = os.path.join(self.dest, self.plain_file)
         self._infile = self.encrypted_file
         self._log.info("Decrypting file '%s' to '%s'", self.encrypted_file, self._outfile)
-        with open(self.encrypted_file, 'rb') as enc_file:
-            openssl('enc', '-aes-256-cbc', '-d', '-pass',
-                    'file:{secret}'.format(secret=self.secret.keyfile),
-                    _in=enc_file,
-                    _out=self._outfile)
+        with open(self.encrypted_file, "rb") as enc_file:
+            openssl(
+                "enc",
+                "-aes-256-cbc",
+                "-d",
+                "-pass",
+                "file:{secret}".format(secret=self.secret.keyfile),
+                _in=enc_file,
+                _out=self._outfile,
+            )
         self._log.info("File '%s' decrypted to '%s'", self.encrypted_file, self._outfile)
         return True
 
