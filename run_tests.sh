@@ -22,6 +22,11 @@ trap finish EXIT
 
 set -eu
 
+cd tests
+export PYTHONPATH="$(dirname $0):${PYTHONPATH}"
+pipenv run nosetests ./
+cd ..
+
 touch /tmp/keys.csv
 cat <<EOF > ${TEMP_CONF}
 keys:

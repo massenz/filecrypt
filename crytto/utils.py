@@ -46,7 +46,7 @@ class EncryptConfiguration(object):
 
     def parse_configuration_file(self, conf_file):
         with open(conf_file) as cfg:
-            configs = yaml.load(cfg)
+            configs = yaml.safe_load(cfg)
 
         # First, let's get some logging going.
         if "logging" in configs:
@@ -316,5 +316,4 @@ class KeystoreManager(object):
                     if encryption_key_exists and encrypted_file_exists:
                         writer.writerow(row)
                     else:
-                        print(">>>>>>>>>>>>", row)
                         self._log.debug("Line {}: pruned".format(lineno))
