@@ -5,7 +5,7 @@ from setuptools import setup
 try:
     from pypandoc import convert_file
     long_description = convert_file('README.md', 'md')
-
+    long_description_content_type = "text/markdown"
 except ImportError:
     long_description = """
     Encryption / Decryption utilities, based on OpenSSL and 
@@ -16,11 +16,14 @@ except ImportError:
     
     More information at: https://github.com/massenz/filecrypt.
 """
+    long_description_content_type = "text/plain"
+
 
 setup(name='crytto',
       description='An OpenSSL-based file encryption and decryption utility',
+      long_description_content_type=long_description_content_type,
       long_description=long_description,
-      version='0.6.2',
+      version='0.6.3',
       url='https://github.com/massenz/filecrypt',
       author='M. Massenzio',
       author_email='marco@alertavert.com',
