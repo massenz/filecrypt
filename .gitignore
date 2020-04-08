@@ -30,3 +30,5 @@ MANIFEST
 *.pem
 *.pub
 *.enc
+*.ipynb
+

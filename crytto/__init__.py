@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from os import getenv
+from pathlib import Path
 
 __author__ = "Marco Massenzio"
 __email__ = "marco@alertavert.com"
+
+DEFAULT_CONF_FILE = "conf.yml"
+DEFAULT_CONF_DIF = ".crytto"
+FILECRYPT_CONF_YML = Path(getenv("HOME")) / DEFAULT_CONF_DIF / DEFAULT_CONF_FILE
+
+BACKUP_EXT = ".bak"

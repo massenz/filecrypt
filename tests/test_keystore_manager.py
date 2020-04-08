@@ -22,12 +22,13 @@ class KeystoreManagerTests(common.TestBase):
                 os.remove(self.tmp_store.filestore + ".bak")
 
     def test_lookup(self):
-        ll = self.store.lookup("pass-key-315.enc")
-        self.assertEqual("/data/20160827_snapshot.tar.gz.enc", ll.encrypted)
-
-        ll = self.store.lookup("20160827_snapshot.tar.gz.enc")
+        ll = self.store.lookup("/data/20160827_snapshot.tar.gz.enc")
+        self.assertEqual("20160827_snapshot.tar.gz.enc", ll.encrypted)
         self.assertEqual("/data/keys/pass-key-315.enc", ll.secret)
-        self.assertEqual("/data/20160827_snapshot.tar.gz.enc", ll.encrypted)
+
+        ll = self.store.lookup("/var/local/encrypted/20160306_snapshot.tar.gz.enc")
+        self.assertEqual("/data/keys/pass-key-879.enc", ll.secret)
+        self.assertEqual("20160306_snapshot.tar.gz.enc", ll.encrypted)
 
     def test_fails_with_nofile(self):
         with self.assertRaises(FileNotFoundError):
@@ -36,7 +37,9 @@ class KeystoreManagerTests(common.TestBase):
     def test_add_entry(self):
         new_entry = KeystoreEntry(secret="/tmp/secret.enc", encrypted="/tmp/plain.txt.enc")
         self.tmp_store.add_entry(new_entry)
-        self.assertEqual(new_entry, self.tmp_store.lookup("plain.txt.enc"))
+        self.assertEqual(KeystoreEntry(secret="/tmp/secret.enc", encrypted="plain.txt.enc"),
+                         self.tmp_store.lookup("plain.txt.enc"))
+        self.assertTrue(self.tmp_store.modified)
 
     def test_can_remove(self):
         entries = [
@@ -46,6 +49,9 @@ class KeystoreManagerTests(common.TestBase):
         ]
         for entry in entries:
             self.tmp_store.add_entry(entry)
+
+        self.assertTrue(self.tmp_store.modified)
+        self.assertEqual(3, len(self.tmp_store.key_data))
 
         self.assertTrue(self.tmp_store.remove(entries[2]))
         self.assertIsNone(self.tmp_store.lookup("another.doc.enc"))
@@ -57,21 +63,6 @@ class KeystoreManagerTests(common.TestBase):
         self.assertFalse(
             self.tmp_store.remove(KeystoreEntry("/tmp/zek444", "/var/tmp/non-exist.doc.enc"))
         )
-
-    def test_prune(self):
-        _, k = mkstemp(suffix=".key")
-        _, e = mkstemp(suffix=".enc")
-        self.tmp_store.add_entry(KeystoreEntry(k, e))
-        self.tmp_store.add_entry(KeystoreEntry("/tmp/bogus", e))
-        self.tmp_store.add_entry(KeystoreEntry(k, "/home/docs.doc"))
-
-        self.assertIsNotNone(self.tmp_store.lookup("/home/docs.doc"))
-        self.assertIsNotNone(self.tmp_store.lookup("/tmp/bogus"))
-        self.tmp_store.prune()
-
-        self.assertIsNone(self.tmp_store.lookup("/home/docs.doc"))
-        self.assertIsNone(self.tmp_store.lookup("/tmp/bogus"))
-        self.assertEqual(KeystoreEntry(k, e), self.tmp_store.lookup(e))
 
 
 class KeystoreEntryTests(common.TestBase):

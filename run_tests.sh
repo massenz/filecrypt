@@ -11,8 +11,22 @@
 #
 # See: https://github.com/massenz/filecrypt for more details
 
+set -eu
+
+# Prints the absolute path of the file given as $1
+#
+function abspath {
+    local path=${1:-}
+    if [[ -z ${path} ]]; then
+        exit 1
+    fi
+    echo $(python -c "import os; print(os.path.abspath(\"${path}\"))")
+}
+
+
 TEMP_CONF="/tmp/temp_conf.yml"
-WORKDIR="$(dirname $0)/examples"
+BASEDIR="$(abspath $(dirname $0))"
+WORKDIR="${BASEDIR}/examples"
 
 # Clean up after ourselves.
 function finish {
@@ -20,39 +34,41 @@ function finish {
 }
 trap finish EXIT
 
-set -eu
 
-cd tests
-export PYTHONPATH="$(dirname $0):${PYTHONPATH}"
-pipenv run nosetests ./
-cd ..
+export PYTHONPATH="${BASEDIR}:${PYTHONPATH:-}"
 
+cd ${BASEDIR}/tests
+nosetests ${BASEDIR}/tests
+
+cd ${BASEDIR}
 touch /tmp/keys.csv
 cat <<EOF > ${TEMP_CONF}
 keys:
-     private: ${WORKDIR}/test.pem
-     public: ${WORKDIR}/test.pub
+     private: ${BASEDIR}/tests/data/test.pem
+     public: ${BASEDIR}/tests/data/test.pub
      secrets: /tmp
 store: /tmp/keys.csv
 out: /tmp
 EOF
 
 
-encrypt -f ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc \
-    -o /tmp/plaintext.txt.enc --keep ${WORKDIR}/plaintext.txt
+cmd="encrypt -f ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o /tmp/plaintext.txt.enc --keep ${WORKDIR}/plaintext.txt"
+echo -e "\n============\n${cmd}\n\n----------\n"
+${BASEDIR}/run ${cmd}
 
 if [[ ! -e /tmp/plaintext.txt.enc ]]; then
     echo "[ERROR] The encrypted file could not be found"
     exit 1
 fi
 
-decrypt -f ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc \
-    -o /tmp/plaintext.txt /tmp/plaintext.txt.enc
+cmd="decrypt -f ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o /tmp/plaintext.txt /tmp/plaintext.txt.enc"
+echo -e "${cmd}\n============\n"
+${BASEDIR}/run ${cmd}
 
 DIFF=$(diff /tmp/plaintext.txt ${WORKDIR}/plaintext.txt)
 
 if [[ -n ${DIFF} ]]; then
-    echo -e "[ERROR] Files differ:\n${DIFF}"
+    echo -e "[ERROR] Files differ:\n\n----------\n${DIFF}\n----------\n"
     exit 1
 fi
 

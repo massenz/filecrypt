@@ -27,6 +27,7 @@ import os
 import random
 import sys
 
+from crytto import FILECRYPT_CONF_YML
 from crytto.filecrypt import FileCrypto
 from crytto.utils import (
     SelfDestructKey,
@@ -38,15 +39,10 @@ from crytto.utils import (
 )
 
 
-DEFAULT_CONF_FILE = "conf.yml"
-DEFAULT_CONF_DIF = ".crytto"
-FILECRYPT_CONF_YML = os.path.join(os.getenv("HOME"), DEFAULT_CONF_DIF, DEFAULT_CONF_FILE)
-
-
 def check_version():
-    if sys.version_info < (3, 0):
+    if sys.version_info < (3, 6):
         print(
-            "Python 3.0 or greater required (3.5 recommended). Please consider upgrading or "
+            "Python 3.6 or greater required (3.7 recommended). Please consider upgrading or "
             "using a virtual environment."
         )
         sys.exit(1)
@@ -85,7 +81,7 @@ def establish_secret(secret, secrets_dir, keystore, infile=None, decrypt=False):
     :type secret: str or None
 
     :param secrets_dir: the directory that contains the secrets' files (as specified in
-        `configuration.yaml`).
+        `FILECRYPT_CONF_YML`).
     :type secrets_dir: str
 
     :param keystore: the keystore that contains the list of encrypted files and relative secrets.
@@ -109,13 +105,15 @@ def establish_secret(secret, secrets_dir, keystore, infile=None, decrypt=False):
         else:
             return os.path.join(secrets_dir, secret)
 
-    if not decrypt:
+    if decrypt:
+        if keystore and infile:
+            entry = keystore.lookup(infile)
+            if entry:
+                return entry.secret
+    else:
+        # We are encrypting the file, but don't already have a secret specified:
+        # we will create a new one and return it.
         return create_secret_filename(secrets_dir)
-
-    if keystore and infile:
-        entry = keystore.lookup(infile)
-        if entry:
-            return entry.secret
 
 
 def parse_args():
@@ -187,13 +185,13 @@ def encrypt(cfg, should_encrypt=True):
     secret = establish_secret(
         cfg.secret, enc_cfg.secrets_dir, keystore, cfg.infile, not should_encrypt
     )
-
     if not secret:
         raise RuntimeError(
             "Could not locate a suitable decryption key for {}; keystore: {}".format(
                 cfg.infile, keystore.filestore
             )
         )
+    enc_cfg.log.info("Found encrypted secret: '%s'", secret)
 
     passphrase = SelfDestructKey(secret, keypair=keys)
     enc_cfg.log.info("Using '%s' as the encryption secret", passphrase.keyfile)
@@ -214,6 +212,7 @@ def encrypt(cfg, should_encrypt=True):
         log=enc_cfg.log,
     )
     encryptor()
+    enc_cfg.log.info("'%s' completed", "Encryption" if should_encrypt else "Decryption")
 
     if should_encrypt:
         if enc_cfg.shred:
@@ -311,38 +310,3 @@ def send_cmd():
     except Exception as ex:
         print("[ERROR] Could not complete execution:", ex)
         exit(1)
-
-
-def prune_cmd():
-    """Prunes the keystore of unused keys (those that were used to encrypt files that no longer
-    exist).
-
-    Takes two arguments, both optional:
-
-        - a keystore file (which will be pruned); and
-        - a working directory to check for files' existence.
-
-    If the `keystore` is not defined, the one configured in the defaul YAML configuration file
-    will be used; if a `working directory` is not specified, only the location of the file as
-    reported in the keystore will be checked.
-    """
-    enc_cfg = EncryptConfiguration(conf_file=FILECRYPT_CONF_YML)
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--keystore", "-k", default=enc_cfg.store, help="The keystore to prune")
-    parser.add_argument("--workdir", "-d", help="Alternative location to check for files")
-    parser.add_argument("-v", dest="verbose", action="store_true", help="Verbose logging")
-    cli_args = parser.parse_args()
-
-    try:
-        if not os.path.exists(cli_args.keystore):
-            raise ValueError("File {} does not exist".format(cli_args.keystore))
-        keystore = KeystoreManager(cli_args.keystore, cli_args.verbose)
-        keystore.prune(alt_dir=cli_args.workdir)
-
-        print(
-            "Keystore {} has been pruned; a backup copy has been kept in {}".format(
-                keystore.filestore, keystore.filestore + ".bak"
-            )
-        )
-    except Exception as ex:
-        print("[ERROR] Could not prune {}: {}".format(cli_args.keystore, ex))

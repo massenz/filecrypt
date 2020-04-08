@@ -1,7 +1,9 @@
-# Requirements file for filecrypt.
-# Created by M. Massenzio (c) 2016.
+# Copyright AlertAvert.com (c) 220. All rights reserved.
+#
+# Required dependencies (development).
 
-PyYAML==3.11
-sh==1.11
+black==19.10b0
 nose==1.3.7
 pypandoc==1.4
+PyYAML==3.11
+sh==1.11

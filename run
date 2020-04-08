@@ -18,11 +18,10 @@ entry points.
 
 This takes exactly the same CLI args as described in the README; plus an additional "selector" 
 used to choose which command to run:
-
-    - decrypt;
-    - prune;
-    - send; or
-    - nothing, which will run the encrypt command.
+    
+    - encrypt;
+    - decrypt; or
+    - send.
 """
 
 # Adds this file's directory to the PYTHONPATH.
@@ -32,14 +31,18 @@ sys.path.append(dirname)
 
 import crytto.main
 
-if 'decrypt' in sys.argv:
-    sys.argv.remove('decrypt')
-    crytto.main.entrypoint(False)
-elif 'prune' in sys.argv:
-    sys.argv.remove("prune")
-    crytto.main.prune_cmd()
-elif 'send' in sys.argv:
-    sys.argv.remove('send')
-    crytto.main.send_cmd()
+COMMANDS = {
+    'decrypt': crytto.main.decrypt_cmd,
+    'encrypt': crytto.main.encrypt_cmd,
+    'send': crytto.main.send_cmd
+}
+
+for cmd in COMMANDS:
+    if sys.argv[1] == cmd:
+        sys.argv.remove(cmd)
+        sys.argv[0] = cmd
+        COMMANDS[cmd]()
+        break
 else:
-    crytto.main.entrypoint(True)
+    print(f"[ERROR] Unrecognized run command {sys.argv[1]}")
+    exit(1)

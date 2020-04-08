@@ -15,14 +15,18 @@
 
 from collections import namedtuple
 import csv
+from datetime import datetime as d
 import logging
 import os
+from pathlib import Path
 from tempfile import mkstemp
 
 import time
 import yaml
 
 from sh import openssl, ErrorReturnCode, shred as _shred
+
+from crytto import BACKUP_EXT
 
 
 class EncryptConfiguration(object):
@@ -199,42 +203,81 @@ class KeystoreManager(object):
     There is a need to track which key was used when encrypting which file, so that we can easily
     decrypt them when necessary.
 
-    This store uses the simplest approach, a CSV file with two entries per row: the encryption
-    key file name and the encrypted file; they are all stored as
-    absolute paths and kept in no particular order.
+    This store uses the simplest approach, a CSV file with two entries per row: the encrypted
+    file, whose name only is stored, and the full path to the encryption passphrase; the
+    encrypted file name is the lookup key and must be unique.
 
     We assume that the file size is such that sequential traversal and append-only semantics
     will NOT cause any major performance impact.
-
-    __NOTE__ this class (and the underlying store) allows for duplicate entries; while lookups
-    will return only __the first match__; this is by design and is a known limitation.
     """
-
     def __init__(self, filestore, verbose=False):
-        if not os.path.exists(filestore):
+        """ Creates a new `Keystore` from the stored `filestore`
+
+        :param filestore: the filename where the key mappings are stored
+        :param verbose: if `True` we emit debug logs
+        """
+        self._filestore = Path(filestore)
+        self.modified = False
+        if not self._filestore.exists():
             # The keystore needs creating.
             with open(filestore, "wt") as keystore:
-                keystore.write("# Crytto keystore file, created at: {}".format(time.ctime()))
-        self.filestore = os.path.abspath(filestore)
+                keystore.write(f"# Crytto keystore file, created at: {time.ctime()}\n#\n")
+            self.modified = True
         self._log = logging.getLogger(self.__class__.__name__)
         self._log.setLevel(logging.DEBUG if verbose else logging.INFO)
+        self._data = self._load()
+
+    def __del__(self):
+        """Destructor, saves keystore if it has been modified"""
+        if not self.modified:
+            return
+        self._save()
+
+    def _load(self):
+        data = dict()
+        self._log.debug(f"Loading key mappings from {self.filestore}")
+        with self._filestore.open() as store:
+            reader = csv.DictReader(store, fieldnames=('enc', 'key'), skipinitialspace=True)
+            for row in reader:
+                encrypted = row['enc']
+                if encrypted.startswith('#'):
+                    continue
+                data[encrypted] = row['key']
+        self._log.debug(f"Loaded {len(data)} entries")
+        return data
+
+    def _save(self):
+        if self._filestore.exists():
+            self._filestore.rename(self.filestore + ".bak")
+        with self._filestore.open('wt') as store:
+            store.write(f"# Crytto keystore file\n")
+            store.write(f"# Created at {d.isoformat(d.now())}\n")
+            store.write(f"#\n")
+            writer = csv.writer(store, lineterminator="\n")
+            for k, v in self._data.items():
+                writer.writerow((k, v))
+
+    @property
+    def filestore(self):
+        return str(self._filestore)
+
+    @property
+    def key_data(self):
+        return self._data
 
     def lookup(self, filename):
         """Looks up for the given filename for any entry and returns the row contents.
 
-        :param filename: the name (relative or absolute) to look up, in any of the rows,
-        for any of the entries (be it the plaintext file, or the key name, or the encrypted file).
+        :param filename: the name of the file to look up, without any path components (if
+            present, they will be stripped out before the lookup)
         :type filename: str
 
         :return: the ``namedtuple`` that represents a row in this store
         :rtype: KeystoreEntry
         """
-        with open(self.filestore, "rt") as store:
-            reader = csv.reader(store)
-            for row in reader:
-                for item in row:
-                    if item.endswith(filename):
-                        return KeystoreEntry(*row)
+        filename = Path(filename).name
+        if filename in self._data:
+            return KeystoreEntry(encrypted=filename, secret=self._data.get(filename))
 
     def add_entry(self, entry):
         """Adds a new entry at the end of the key store.
@@ -242,9 +285,10 @@ class KeystoreManager(object):
         :param entry: the tuple containing the plaintext, secret and encrypted filenames.
         :type entry: KeystoreEntry
         """
-        with open(self.filestore, "at") as store:
-            writer = csv.writer(store)
-            writer.writerow(entry)
+        encrypted = Path(entry.encrypted)
+        self._log.debug(f"Adding entry for {encrypted}: {entry.secret}")
+        self._data[encrypted.name] = entry.secret
+        self.modified = True
 
     def remove(self, entry):
         """ Removes an entry from the store.
@@ -255,65 +299,12 @@ class KeystoreManager(object):
         :return: ```True``` if the entry was successfully removed
         :rtype: bool
         """
-        backup = self.filestore + ".bak"
-        os.rename(self.filestore, backup)
-        found = False
-        with open(backup, "rt") as old:
-            reader = csv.reader(old)
-            with open(self.filestore, "wt") as store:
-                writer = csv.writer(store)
-                for row in reader:
-                    existing = KeystoreEntry(*row)
-                    entry_to_remove = (
-                        entry
-                        if isinstance(entry, KeystoreEntry)
-                        else KeystoreEntry(secret=row[0], encrypted=entry)
-                    )
-                    if existing != entry_to_remove or row[0].startswith("#"):
-                        writer.writerow(row)
-                    else:
-                        found = True
-        return found
-
-    def prune(self, alt_dir=None):
-        """ Cleans up entries that no longer exist.
-
-        If either the key or the encrypted file have been removed from the system, the relative
-        row will be removed from the backing store.
-
-        A copy of the keystore will be kept in a same-named file, with a ```.bak``` suffix.
-
-        :param alt_dir: an alternate location to check for the files' existence
-        :type alt_dir: str
-        """
-        backup = self.filestore + ".bak"
-        os.rename(self.filestore, backup)
-        lineno = 0
-        with open(backup, "rt") as old:
-            reader = csv.reader(old)
-            with open(self.filestore, "wt") as store:
-                writer = csv.writer(store)
-                for row in reader:
-                    lineno += 1
-                    if not row:
-                        self._log.warning("Unexpected empty line: {}".format(lineno))
-                        continue
-                    # We preserve comments.
-                    if row[0].startswith("#"):
-                        writer.writerow(row)
-                        continue
-                    if len(row) != 2:
-                        self._log.error(
-                            "Line {} does not match pattern (key, file): removed. "
-                            "{}".format(lineno, row)
-                        )
-                        continue
-                    encryption_key_exists = os.path.exists(row[0])
-                    encrypted_file_exists = os.path.exists(row[1])
-                    if alt_dir:
-                        alt_file = os.path.join(alt_dir, os.path.basename(row[1]))
-                        encrypted_file_exists = encrypted_file_exists or os.path.exists(alt_file)
-                    if encryption_key_exists and encrypted_file_exists:
-                        writer.writerow(row)
-                    else:
-                        self._log.debug("Line {}: pruned".format(lineno))
+        if isinstance(entry, KeystoreEntry):
+            entry = entry.encrypted
+        if self._data.pop(Path(entry).name, None):
+            self._log.debug(f"Removed entry for {entry}")
+            self.modified = True
+            return True
+        else:
+            self._log.warning(f"Failed to remove entry for {entry}")
+            return False
