@@ -124,11 +124,11 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-f",
+        "--conf",
         dest="conf_file",
         default=FILECRYPT_CONF_YML,
         help="The location of the YAML configuration file, if different from "
-        "the default {}.".format(FILECRYPT_CONF_YML),
+             "the default {}.".format(FILECRYPT_CONF_YML),
     )
 
     parser.add_argument(
@@ -142,25 +142,25 @@ def parse_args():
         "-o",
         "--out",
         help="The output file, overrides the default naming and the location "
-        "defined in the YAML configuration file.",
+             "defined in the YAML configuration file.",
     )
 
     parser.add_argument(
         "-p",
         "--pubkey",
         help="Only used for the encrypt_send command, to specify a Public key "
-        "shared by the recipient; otherwise ignored.",
+             "shared by the recipient; otherwise ignored.",
     )
 
     parser.add_argument(
         "-s",
         "--secret",
         help="The full path of the ENCRYPTED passphrase to use to encrypt the "
-        "file; it will be left unmodified on disk.",
+             "file; it will be left unmodified on disk.",
     )
 
     parser.add_argument(
-        "-w",
+        "-f",
         "--force",
         action="store_true",
         help="If specified, the destination file will be overwritten if it " "already exists.",
