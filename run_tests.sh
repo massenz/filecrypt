@@ -52,7 +52,8 @@ out: /tmp
 EOF
 
 
-cmd="encrypt -f ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o /tmp/plaintext.txt.enc --keep ${WORKDIR}/plaintext.txt"
+cmd="encrypt --conf ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o \
+/tmp/plaintext.txt.enc --keep ${WORKDIR}/plaintext.txt"
 echo -e "\n============\n${cmd}\n\n----------\n"
 ${BASEDIR}/run ${cmd}
 
@@ -61,7 +62,8 @@ if [[ ! -e /tmp/plaintext.txt.enc ]]; then
     exit 1
 fi
 
-cmd="decrypt -f ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o /tmp/plaintext.txt /tmp/plaintext.txt.enc"
+cmd="decrypt --conf ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o \
+/tmp/plaintext.txt /tmp/plaintext.txt.enc"
 echo -e "${cmd}\n============\n"
 ${BASEDIR}/run ${cmd}
 

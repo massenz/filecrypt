@@ -43,7 +43,6 @@ setup(name='crytto',
           'console_scripts': [
               'encrypt=crytto.main:encrypt_cmd',
               'decrypt=crytto.main:decrypt_cmd',
-              'prune_store=crytto.main:prune_cmd',
               'encrypt_send=crytto.main:send_cmd'
           ]
       })
