@@ -58,7 +58,7 @@ class FileCrypto(object):
 
         :param dest_dir: where to place the encrypted file (if not specified, defaults to the
             same directory as the ```plain_file```)
-        :type dest_dir: str
+        :type dest_dir: str or None
 
         :param encrypt: whether this callable should perform an encryption (if ```True```,
             the default) or decryption
