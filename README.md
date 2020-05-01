@@ -3,9 +3,9 @@
 
 Author  | [M. Massenzio](http://codetrips.com)
  -------|-----------
-Version | 0.6.1
-Updated | 2018-06-09
-Code    | [bitbucket.org](git@bitbucket.org:marco/filecrypt.git)
+Version | 0.7.2
+Updated | 2020-04-30
+Code    | [bitbucket.org](https://bitbucket.org/marco/filecrypt)
 
 
 # overview
@@ -32,9 +32,17 @@ Alternatively, clone the project from github and follow the instructions below:
 
     git clone git@bitbucket.org:marco/filecrypt.git
 
-__Note__ I moved the code to [bitbucket](http://bitbucket.org): Micro$oft can kiss my b--t...
+Once cloned, you can try out functionality by packaging it as a self-contained executable: use
+the `package.sh` script to generate a `filecrypt.pyz` self-extracting executable in the `dist/` folder 
+ and then you can encrypt/decrpyt files (see the [configuration](#configuration) section first).
 
-Once cloned, you can try out functionality using the `run` script (which replaces the `console-scripts` installed by the package) which takes the same arguments as the [encryption] (#encryption) command; or adding a `-d` flag, will execute the [decryption](#decryption) command.
+```shell script
+# To encrypt 
+./filecrypt.pyz -o test.enc /path/to/my_plaintext.txt
+
+# To decrypt:
+./filecrypt.pyz -d -o /path/to/whatever.txt test.enc
+```
 
 Once all dependencies are installed:
 
@@ -42,7 +50,10 @@ Once all dependencies are installed:
 
 tests can be run via:
 
-    nosetests tests
+    ./run_tests.sh
+    
+See both the `run_tests` and `package` scripts for examples of how to use encryption/decryption.
+
 
 # configuration
 
@@ -68,7 +79,7 @@ store: keys.csv
 #out: /data/store/file
 
 # Whether to securely delete the original plaintext file; by default it is kept.
-# It can be overridden by using `--keep` when running `encrypt`.  True by default.
+# It can be overridden by using `--keep` when running `filecrypt`.  True by default.
 shred: true
 
 # Optional logging configuration - mostly useful to
@@ -127,7 +138,7 @@ their path can then be specified in the `conf.yaml` file.
 
 Always use the `--help` option to see the most up-to-date options available; anyway, the basic usage is:
 
-    encrypt my_secret.txt
+    filecrypt my_secret.txt
 
 which will create a `my_secret.txt.enc` file in the current directory, unless a different one has been specified using the `out` option in `/etc/filecrypt/conf.yml`.
 
@@ -137,7 +148,7 @@ Finally, the plaintext version of this key will have been safely destroyed.
 
 A more elaborate one (see the example configuration in `examples/example_conf.yaml`):
 
-    encrypt -f example_conf.yaml -s secret-key.enc plaintext.txt
+    filecrypt --conf example_conf.yaml -s secret-key.enc plaintext.txt
 
 will create an encrypted copy of the file to be stored as `/data/store/plaintext.txt.enc`; the original file __will not__ be securely destroyed (using `shred`); and the encryption key name and location (the current directory, and `secret-key.enc`) to be stored in the `keys.csv` file:
 
@@ -155,11 +166,11 @@ By default, the encrypted filename has the same name as the plaintext file, with
 
 By using the `--out` (`-o`) option, it is possible to specify the location of the output encrypted file, either absolute, or relative to the current directory:
 
-    encrypt -o mysecret.ser my_secret.doc
+    filecrypt -o mysecret.ser my_secret.doc
 
 or:
 
-    encrypt -o secret/files/mysecret.ser my_secret.doc
+    filecrypt -o secret/files/mysecret.ser my_secret.doc
 
 Regardless of the means of specifying the input/outpup files, the full path to both files will __always__ be used in the CSV keystore, regardless of whether a relative or absolute path was specified on the command line.
 
@@ -169,11 +180,12 @@ __IMPORTANT__
 >
 >You have been warned.
 
+
 ### decryption
 
-To decrypt a file that has been encrypted using this utility, `decrypt` and pass the name of the encrypted file; it will be decrypted using the passed-in secret key (`-s` flag):
+To decrypt a file that has been encrypted using this utility, use the `-d` flag:
 
-    decrypt -f example_conf.yaml -s secret-key.enc plaintext.txt
+    decrypt -o example_conf.yaml -d plaintext.txt
 
 If the encryption key (`--secret` or `-s`) is not specified, then the application will try and locate the plaintext file in the keystore specified in the `conf.yaml` using the `store` key:
 
@@ -183,9 +195,16 @@ store: keys.csv
 ```
 and derive the location of the encryption key from the entry, if one is found.
 
-Please note that __the full absolute path must match__ even if only a relative path was given at the command line, as files are always stored with their full path when saved to the key store.
+Please note that __only the filename is used to lookup the key__ and so two **encrypted** 
+filenames in different directories but with the same name will be assumed to have been encrypted
+with the same `passphrase`.
 
-As with encryption, the `--out` flag can be used to specify the output file; otherwise, the current directory will be used.
+The `passphrase` file, is stored with its full path: if you move the keys, or rename any of
+the folder in their path, you will have to update the `keystore` (or use the `-s` flag when
+decrypting).
+
+As with encryption, the `--out` flag can be used to specify the output file; otherwise,
+the current directory will be used.
 
 The encrypted file will be left untouched: the `--keep` flag _may_ be used, but will have no effect and the value of the `shred:` option will be ignored.
 
@@ -197,7 +216,7 @@ As of `0.5.x`, `crytto` supports encrypting a file using solely a Public Key, an
 
 The main use case is to enable Alice to send Bob an encrypted file, once Bob has given her a copy of his Public key; call the latter `bob.pub` and the file to share `my_secret.txt`, then Alice can execute:
 
-    encrypt_send --key bob.pub --out my-secret.ser my_secret.txt
+    filecrypt --send --key bob.pub --out my-secret.ser my_secret.txt
 
 after encryption, in the current directory there will be the following two new files:
 
@@ -208,20 +227,9 @@ the former is the encrypted contents of `my_secret.txt` and the latter the encry
 
 Those files can be both sent to Bob or, even better, provided to him separately for added security; either way, upon receiving them, Bob can run the following (we assume the `bob.pub` was the private half of the configured key pair that he keeps in his [configuration file](#configuration)):
 
-    decrypt -s pass-key-000854.enc --out alice_secret.txt my-secret.ser
+    filecrypt -s pass-key-000854.enc --out alice_secret.txt -d my-secret.ser
 
 (again, leaving out the `--out` is useful when using the defaults, as the `my_secret.txt.enc` would have turned back into `my_secret.txt` -- in this case, the plaintext decrypted file would have been called `my-secret.ser.out`).
-
-### pruning
-
-The keystore may grow very large and entries may become obsolete, as files are deleted: using the `prune_store` script (optionally, giving it the name of the keystore to prune) all entries where  either of the files are no longer existing will be removed.
-
-__This command may lead to data loss__, however, a copy of the keystore is backed up with the
-`.bak` extension.
-
-__Note__
-For Decryption, we will not use the value of the `out:` flag in the YAML configuration file, even
- if specified.
 
 ## references
 

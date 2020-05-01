@@ -18,12 +18,13 @@ except ImportError:
 """
     long_description_content_type = "text/plain"
 
+from VERSION import VERSION
 
 setup(name='crytto',
       description='An OpenSSL-based file encryption and decryption utility',
       long_description_content_type=long_description_content_type,
       long_description=long_description,
-      version='0.7.1',
+      version=VERSION,
       url='https://bitbucket.org/marco/filecrypt',
       author='M. Massenzio',
       author_email='marco@alertavert.com',
