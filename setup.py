@@ -11,20 +11,21 @@ except ImportError:
     Encryption / Decryption utilities, based on OpenSSL and 
     public/private keypairs.
     
-    Use the `encrypt` command to encrypt a plaintext file securely (and, optionally
-    securely destroy it) and the `decrypt` command to restore it.
+    Use the `filecrypt` command to encrypt a plaintext file securely (and, optionally
+    securely destroy it); using the `-d` flag decrypts it.
     
     More information at: https://github.com/massenz/filecrypt.
 """
     long_description_content_type = "text/plain"
 
+from VERSION import VERSION
 
 setup(name='crytto',
       description='An OpenSSL-based file encryption and decryption utility',
       long_description_content_type=long_description_content_type,
       long_description=long_description,
-      version='0.7.0',
-      url='https://github.com/massenz/filecrypt',
+      version=VERSION,
+      url='https://bitbucket.org/marco/filecrypt',
       author='M. Massenzio',
       author_email='marco@alertavert.com',
       license='Apache2',
@@ -41,8 +42,6 @@ setup(name='crytto',
       ],
       entry_points={
           'console_scripts': [
-              'encrypt=crytto.main:encrypt_cmd',
-              'decrypt=crytto.main:decrypt_cmd',
-              'encrypt_send=crytto.main:send_cmd'
+              'filecrypt=crytto.main:entrypoint',
           ]
       })

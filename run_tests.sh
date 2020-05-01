@@ -51,21 +51,22 @@ store: /tmp/keys.csv
 out: /tmp
 EOF
 
+bindir=$(dirname $(which python3))
 
-cmd="encrypt --conf ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o \
+cmd="${bindir}/filecrypt --conf ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o \
 /tmp/plaintext.txt.enc --keep ${WORKDIR}/plaintext.txt"
 echo -e "\n============\n${cmd}\n\n----------\n"
-${BASEDIR}/run ${cmd}
+${cmd}
 
 if [[ ! -e /tmp/plaintext.txt.enc ]]; then
     echo "[ERROR] The encrypted file could not be found"
     exit 1
 fi
 
-cmd="decrypt --conf ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o \
+cmd="${bindir}/filecrypt -d --conf ${TEMP_CONF} -s ${WORKDIR}/secret-key.enc -o \
 /tmp/plaintext.txt /tmp/plaintext.txt.enc"
 echo -e "${cmd}\n============\n"
-${BASEDIR}/run ${cmd}
+${cmd}
 
 DIFF=$(diff /tmp/plaintext.txt ${WORKDIR}/plaintext.txt)
 
