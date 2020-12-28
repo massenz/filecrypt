@@ -28,7 +28,7 @@ import random
 import sys
 import traceback
 
-from crytto import FILECRYPT_CONF_YML
+from crytto import FILECRYPT_CONF_YML, __version__
 from crytto.filecrypt import FileCrypto
 from crytto.utils import (
     SelfDestructKey,
@@ -43,7 +43,7 @@ from crytto.utils import (
 def check_version():
     if sys.version_info < (3, 6):
         raise RuntimeError(
-            "Python 3.6 or greater required (3.7 recommended). Please consider upgrading or "
+            "Python 3.6 or greater required (3.9 recommended). Please consider upgrading or "
             "using a virtual environment."
         )
 
@@ -133,7 +133,7 @@ def parse_args():
     parser.add_argument(
         "-d",
         dest="encrypt",
-        action='store_false',
+        action="store_false",
         help="If specified, the `infile` will be decrypted, using the encrypted --secret",
     )
     parser.add_argument(
@@ -168,7 +168,7 @@ def parse_args():
     )
     parser.add_argument(
         "--send",
-        action='store_true',
+        action="store_true",
         help="If specified, the plaintext `infile` will be encrypted and an encrypted"
              "passphrase (the 'secret') will be generated, using the --pubkey (which is"
              "required)."
@@ -176,11 +176,18 @@ def parse_args():
     parser.add_argument(
         "-v",
         dest='debug',
-        action='store_true',
+        action="store_true",
         help="If specified, and an error occurs, the full stacktrace is printed; "
              "also, logging is set in DEBUG mode."
     )
-    parser.add_argument("infile", help="The file that will be securely encrypted or decrypted.")
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Prints the version of the binary build and exits"
+    )
+    parser.add_argument("infile",
+                        nargs="?",
+                        help="The file that will be securely encrypted or decrypted, required")
     return parser.parse_args()
 
 
@@ -298,6 +305,11 @@ def entrypoint():
     try:
         check_version()
         config = parse_args()
+        if config.version:
+            print(f"File Encryption Utilities (crytto) Version {__version__}")
+            exit(0)
+        if not config.infile:
+            raise ValueError("The name of the file to encrypt/decrypt is required")
         if config.send:
             if not config.pubkey:
                 raise ValueError("A valid Public key must be defined using the --pubkey option")

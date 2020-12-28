@@ -17,6 +17,7 @@ from pathlib import Path
 
 __author__ = "Marco Massenzio"
 __email__ = "marco@alertavert.com"
+__version__ = '0.7.3'
 
 DEFAULT_CONF_FILE = "conf.yml"
 DEFAULT_CONF_DIF = ".crytto"

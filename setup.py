@@ -7,18 +7,17 @@ try:
     long_description = convert_file('README.md', 'md')
     long_description_content_type = "text/markdown"
 except ImportError:
-    long_description = """
-    Encryption / Decryption utilities, based on OpenSSL and 
-    public/private keypairs.
+    long_description = """Encryption / Decryption utilities, based on OpenSSL and 
+    public/private key pairs.
     
     Use the `filecrypt` command to encrypt a plaintext file securely (and, optionally
     securely destroy it); using the `-d` flag decrypts it.
     
     More information at: https://github.com/massenz/filecrypt.
-"""
+    """
     long_description_content_type = "text/plain"
 
-from VERSION import VERSION
+from crytto import __version__ as VERSION
 
 setup(name='crytto',
       description='An OpenSSL-based file encryption and decryption utility',
