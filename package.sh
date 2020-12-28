@@ -15,7 +15,7 @@ trap cleanup EXIT
 
 
 function get_version {
-  echo $(python -c "from VERSION import VERSION;print(VERSION)")
+  echo $(python -c "from crytto import __version__;print(__version__)")
 }
 
 declare -r BASEDIR="$(abspath $(dirname $0))"
@@ -31,21 +31,27 @@ if [[ -z ${WORKON_HOME} || ! -e ${WORKON_HOME}/${VENV}/bin/activate ]]; then
 fi
 
 source ${WORKON_HOME}/${VENV}/bin/activate
-cd ${BASEDIR}
+pushd ${BASEDIR}
 
 # First build the Python Wheel to upload to PyPI:
 python setup.py bdist_wheel > /dev/null
-echo "[SUCCESS] Filecrypt distribution wheel created"
+echo "[SUCCESS] Filecrypt $(get_version) distribution wheel created"
 
 mkdir -p ${WORKDIR}
 cp -r crytto ${WORKDIR}
+
+echo "[INFO] Installing required libraries to ${WORKDIR} and creating \
+self-extracting Python executable dist/${DEST}"
 
 python -m pip install -r requirements.txt --target ${WORKDIR} > /dev/null
 python -m zipapp --output dist/${DEST} --python=$(which python3) \
   --main="crytto.main:entrypoint" -c ${WORKDIR}
 
-cd dist
-./${DEST} -o ${WORKDIR}/test.enc ${BASEDIR}/tests/data/plain.txt &&
+echo "[SUCCESS] Self-extracting Python executable ${DEST} created"
+
+echo "[INFO] Running test encryption/decryption to validate binary"
+pushd dist
+./${DEST} -o ${WORKDIR}/test.enc --keep ${BASEDIR}/tests/data/plain.txt &&
   ./${DEST} -d -o ${WORKDIR}/test.txt ${WORKDIR}/test.enc
 
 DIFF=$(diff ${BASEDIR}/tests/data/plain.txt ${WORKDIR}/test.txt)
@@ -53,9 +59,11 @@ if [[ -n ${DIFF} ]]; then
   echo -e "[ERROR] Files differ: ${DIFF}"
   exit 1
 fi
+echo "[SUCCESS] Test file successfully encrypted/decrypted"
 
 chmod +x ${DEST}
 tar cfz ${TAR} ${DEST}
-cd ${BASEDIR}
+popd
 
-echo "[SUCCESS] ${PROJECT_NAME} ($(get_version)) packaged to ${TAR}"
+echo "[SUCCESS] ${PROJECT_NAME} ($(get_version)) packaged to ${TAR} for distribution"
+popd
