@@ -33,11 +33,11 @@ Alternatively, clone the project from github and follow the instructions below:
     git clone git@bitbucket.org:marco/filecrypt.git
 
 Once cloned, you can try out functionality by packaging it as a self-contained executable: use
-the `package.sh` script to generate a `filecrypt.pyz` self-extracting executable in the `dist/` folder 
+the `package.sh` script to generate a `filecrypt.pyz` self-extracting executable in the `dist/` folder
  and then you can encrypt/decrpyt files (see the [configuration](#configuration) section first).
 
-```shell script
-# To encrypt 
+```
+# To encrypt
 ./filecrypt.pyz -o test.enc /path/to/my_plaintext.txt
 
 # To decrypt:
@@ -51,7 +51,7 @@ Once all dependencies are installed:
 tests can be run via:
 
     ./run_tests.sh
-    
+
 See both the `run_tests` and `package` scripts for examples of how to use encryption/decryption.
 
 
@@ -195,7 +195,7 @@ store: keys.csv
 ```
 and derive the location of the encryption key from the entry, if one is found.
 
-Please note that __only the filename is used to lookup the key__ and so two **encrypted** 
+Please note that __only the filename is used to lookup the key__ and so two **encrypted**
 filenames in different directories but with the same name will be assumed to have been encrypted
 with the same `passphrase`.
 
