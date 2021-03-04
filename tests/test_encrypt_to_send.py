@@ -39,8 +39,8 @@ class TestSend(TestBase):
             fakeparser.add_argument(arg)
         cli_args = ["--secret", secret, "--conf-file", self.conf, "--out", outfile, infile]
         if decrypt:
-            fakeparser.add_argument('-d', dest='encrypt', action='store_false')
-            cli_args.append('-d')
+            fakeparser.add_argument("-d", dest="encrypt", action="store_false")
+            cli_args.append("-d")
         return fakeparser.parse_args(cli_args)
 
     def test_send(self):

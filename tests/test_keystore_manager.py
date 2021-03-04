@@ -37,8 +37,10 @@ class KeystoreManagerTests(common.TestBase):
     def test_add_entry(self):
         new_entry = KeystoreEntry(secret="/tmp/secret.enc", encrypted="/tmp/plain.txt.enc")
         self.tmp_store.add_entry(new_entry)
-        self.assertEqual(KeystoreEntry(secret="/tmp/secret.enc", encrypted="plain.txt.enc"),
-                         self.tmp_store.lookup("plain.txt.enc"))
+        self.assertEqual(
+            KeystoreEntry(secret="/tmp/secret.enc", encrypted="plain.txt.enc"),
+            self.tmp_store.lookup("plain.txt.enc"),
+        )
         self.assertTrue(self.tmp_store.modified)
 
     def test_can_remove(self):

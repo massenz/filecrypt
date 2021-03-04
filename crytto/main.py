@@ -49,7 +49,7 @@ def check_version():
 
 
 def create_secret_filename(secrets_dir):
-    """ Returns a new, randomly generated, filename for the secret key filename.
+    """Returns a new, randomly generated, filename for the secret key filename.
 
 
     :param secrets_dir: the path where the secret keys files are stored.
@@ -66,7 +66,7 @@ def create_secret_filename(secrets_dir):
 
 
 def establish_secret(secret, secrets_dir, keystore, infile=None, decrypt=False):
-    """ Will figure out a way to establish the filename where the secret is stored.
+    """Will figure out a way to establish the filename where the secret is stored.
 
     During encryption, the secret can either be passed in by the user (`--secret`) or just
     randomly created (`create_secret_filename()`).
@@ -117,7 +117,7 @@ def establish_secret(secret, secrets_dir, keystore, infile=None, decrypt=False):
 
 
 def parse_args():
-    """ Parse command line arguments and returns a configuration object.
+    """Parse command line arguments and returns a configuration object.
 
     :return the configuration object, arguments accessed via dotted notation
     :rtype Namespace
@@ -128,7 +128,7 @@ def parse_args():
         dest="conf_file",
         default=FILECRYPT_CONF_YML,
         help="The location of the YAML configuration file, if different from "
-             "the default {}.".format(FILECRYPT_CONF_YML),
+        "the default {}.".format(FILECRYPT_CONF_YML),
     )
     parser.add_argument(
         "-d",
@@ -152,42 +152,40 @@ def parse_args():
         "-o",
         "--out",
         help="The output file, overrides the default naming and the location "
-             "defined in the YAML configuration file.",
+        "defined in the YAML configuration file.",
     )
     parser.add_argument(
         "-p",
         "--pubkey",
         help="Only used for the encrypt_send command, to specify a Public key "
-             "shared by the recipient; otherwise ignored.",
+        "shared by the recipient; otherwise ignored.",
     )
     parser.add_argument(
         "-s",
         "--secret",
         help="The full path of the ENCRYPTED passphrase to use to encrypt the "
-             "file; it will be left unmodified on disk.",
+        "file; it will be left unmodified on disk.",
     )
     parser.add_argument(
         "--send",
         action="store_true",
         help="If specified, the plaintext `infile` will be encrypted and an encrypted"
-             "passphrase (the 'secret') will be generated, using the --pubkey (which is"
-             "required)."
+        "passphrase (the 'secret') will be generated, using the --pubkey (which is"
+        "required).",
     )
     parser.add_argument(
         "-v",
-        dest='debug',
+        dest="debug",
         action="store_true",
         help="If specified, and an error occurs, the full stacktrace is printed; "
-             "also, logging is set in DEBUG mode."
+        "also, logging is set in DEBUG mode.",
     )
     parser.add_argument(
-        "--version",
-        action="store_true",
-        help="Prints the version of the binary build and exits"
+        "--version", action="store_true", help="Prints the version of the binary build and exits"
     )
-    parser.add_argument("infile",
-                        nargs="?",
-                        help="The file that will be securely encrypted or decrypted, required")
+    parser.add_argument(
+        "infile", nargs="?", help="The file that will be securely encrypted or decrypted, required"
+    )
     return parser.parse_args()
 
 
@@ -247,7 +245,7 @@ def encrypt(cfg):
 
 
 def encrypt_to_send(file_to_encrypt, pubkey, dest=None):
-    """ Encrypts a file to be sent to another party who shared their Public key.
+    """Encrypts a file to be sent to another party who shared their Public key.
 
     :param file_to_encrypt: the name of the file to encrypt; **must exist** and will be left
         unchanged.
@@ -296,7 +294,7 @@ def encrypt_to_send(file_to_encrypt, pubkey, dest=None):
 
 
 def entrypoint():
-    """ Entry-point script to drive encryption/decryption.
+    """Entry-point script to drive encryption/decryption.
 
     This method is invoked by all the various console scripts (see `setup.py`) and by
     the `zipapp` executable archive (see `filecrypt()` below).
