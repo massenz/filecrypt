@@ -37,7 +37,6 @@ trap finish EXIT
 
 export PYTHONPATH="${BASEDIR}:${PYTHONPATH:-}"
 
-cd ${BASEDIR}/tests
 nosetests ${BASEDIR}/tests
 
 cd ${BASEDIR}
