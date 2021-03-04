@@ -18,10 +18,10 @@ from sh import ErrorReturnCode, openssl
 
 
 class FileCrypto(object):
-    """ Encrypts a file using OpenSSL and a secret key.
+    """Encrypts a file using OpenSSL and a secret key.
 
-        More details can be found at:
-        https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst
+    More details can be found at:
+    https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst
     """
 
     def __init__(
@@ -34,7 +34,7 @@ class FileCrypto(object):
         force=False,
         log=logging,
     ):
-        """ Initializes an encryptor.
+        """Initializes an encryptor.
 
         Either one of ```plain_file``` or ```encrypted_file``` __must__ be specified: if only one is
         defined, the other is derived by appending/removing the `.enc` extension; depending on
@@ -58,7 +58,7 @@ class FileCrypto(object):
 
         :param dest_dir: where to place the encrypted file (if not specified, defaults to the
             same directory as the ```plain_file```)
-        :type dest_dir: str
+        :type dest_dir: str or None
 
         :param encrypt: whether this callable should perform an encryption (if ```True```,
             the default) or decryption
@@ -159,7 +159,7 @@ class FileCrypto(object):
         return True
 
     def _decrypt(self):
-        """ Performs the decryption of an encrypted file.
+        """Performs the decryption of an encrypted file.
 
         This is the reverse operation of ```encrypt()``` executing virtually an identical
         ```openssl``` command, with the in/out roles reversed and adding a ```-d``` flag.

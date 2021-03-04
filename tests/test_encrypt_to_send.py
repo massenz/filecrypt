@@ -32,14 +32,16 @@ class TestSend(TestBase):
         if os.path.exists(self.encrypted):
             os.remove(self.encrypted)
 
-    def make_fake_cli_opts(self, secret, infile, outfile):
-        args = ["--secret", "--conf-file", "--out", "--keep", "infile", "--force"]
+    def make_fake_cli_opts(self, secret, infile, outfile, decrypt=False):
+        args = ["--secret", "--conf-file", "--out", "--keep", "infile", "--force", "--debug"]
         fakeparser = argparse.ArgumentParser()
         for arg in args:
             fakeparser.add_argument(arg)
-        return fakeparser.parse_args(
-            ["--secret", secret, "--conf-file", self.conf, "--out", outfile, infile]
-        )
+        cli_args = ["--secret", secret, "--conf-file", self.conf, "--out", outfile, infile]
+        if decrypt:
+            fakeparser.add_argument("-d", dest="encrypt", action="store_false")
+            cli_args.append("-d")
+        return fakeparser.parse_args(cli_args)
 
     def test_send(self):
         secret = None
@@ -54,8 +56,8 @@ class TestSend(TestBase):
             self.assertTrue(os.path.exists(self.encrypted))
 
             decrypted = "/tmp/decrypt.txt"
-            options = self.make_fake_cli_opts(secret, self.encrypted, decrypted)
-            encrypt(options, should_encrypt=False)
+            options = self.make_fake_cli_opts(secret, self.encrypted, decrypted, decrypt=True)
+            encrypt(options)
 
             with open(decrypted) as plain:
                 self.assertEqual(text, plain.read())

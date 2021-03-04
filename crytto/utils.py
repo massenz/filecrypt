@@ -98,10 +98,10 @@ class EncryptConfiguration(object):
 class SelfDestructKey(object):
     """A self-destructing key: it will shred its contents when it gets deleted.
 
-       This key also encrypts itself with the ``keypair`` before writing itself out to a file.
+    This key also encrypts itself with the ``keypair`` before writing itself out to a file.
 
-       As a convenience, it can be automatically converted to an array of bytes with the
-       unencrypted contents of the file via the ``__bytes__()`` special method.
+    As a convenience, it can be automatically converted to an array of bytes with the
+    unencrypted contents of the file via the ``__bytes__()`` special method.
     """
 
     def __init__(self, encrypted_key, keypair):
@@ -210,8 +210,9 @@ class KeystoreManager(object):
     We assume that the file size is such that sequential traversal and append-only semantics
     will NOT cause any major performance impact.
     """
+
     def __init__(self, filestore, verbose=False):
-        """ Creates a new `Keystore` from the stored `filestore`
+        """Creates a new `Keystore` from the stored `filestore`
 
         :param filestore: the filename where the key mappings are stored
         :param verbose: if `True` we emit debug logs
@@ -237,19 +238,19 @@ class KeystoreManager(object):
         data = dict()
         self._log.debug(f"Loading key mappings from {self.filestore}")
         with self._filestore.open() as store:
-            reader = csv.DictReader(store, fieldnames=('enc', 'key'), skipinitialspace=True)
+            reader = csv.DictReader(store, fieldnames=("enc", "key"), skipinitialspace=True)
             for row in reader:
-                encrypted = row['enc']
-                if encrypted.startswith('#'):
+                encrypted = row["enc"]
+                if encrypted.startswith("#"):
                     continue
-                data[encrypted] = row['key']
+                data[encrypted] = row["key"]
         self._log.debug(f"Loaded {len(data)} entries")
         return data
 
     def _save(self):
         if self._filestore.exists():
             self._filestore.rename(self.filestore + ".bak")
-        with self._filestore.open('wt') as store:
+        with self._filestore.open("wt") as store:
             store.write(f"# Crytto keystore file\n")
             store.write(f"# Created at {d.isoformat(d.now())}\n")
             store.write(f"#\n")
@@ -291,7 +292,7 @@ class KeystoreManager(object):
         self.modified = True
 
     def remove(self, entry):
-        """ Removes an entry from the store.
+        """Removes an entry from the store.
 
         :param entry: the full row to remove, or just the name of the encrypted file for the row.
         :type entry: str or KeystoreEntry

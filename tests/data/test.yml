@@ -1,8 +1,8 @@
 # Test configuration file.
 
 keys:
-    private: data/test.pem
-    public: data/test.pub
+    private: tests/data/test.pem
+    public: tests/data/test.pub
     secrets: /tmp
 
 # Where to store the encrypted file; the folder MUST already exist and the user

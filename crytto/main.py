@@ -18,7 +18,7 @@ Uses OpenSSL library to encrypt a file using a private/public key secret.
 A full description of the process can be found at:
 [HOW-TO Encrypt an archive](https://github.com/massenz/HOW-TOs/blob/master/HOW-TO%20Encrypt%20archive.rst)
 
-See the [README](https://github.com/massenz/crytto) for more details.
+See the [README](https://bitbucket.org/marco/filecrypt) for more details.
 """
 
 import argparse
@@ -26,8 +26,9 @@ import logging
 import os
 import random
 import sys
+import traceback
 
-from crytto import FILECRYPT_CONF_YML
+from crytto import FILECRYPT_CONF_YML, __version__
 from crytto.filecrypt import FileCrypto
 from crytto.utils import (
     SelfDestructKey,
@@ -41,15 +42,14 @@ from crytto.utils import (
 
 def check_version():
     if sys.version_info < (3, 6):
-        print(
-            "Python 3.6 or greater required (3.7 recommended). Please consider upgrading or "
+        raise RuntimeError(
+            "Python 3.6 or greater required (3.9 recommended). Please consider upgrading or "
             "using a virtual environment."
         )
-        sys.exit(1)
 
 
 def create_secret_filename(secrets_dir):
-    """ Returns a new, randomly generated, filename for the secret key filename.
+    """Returns a new, randomly generated, filename for the secret key filename.
 
 
     :param secrets_dir: the path where the secret keys files are stored.
@@ -66,7 +66,7 @@ def create_secret_filename(secrets_dir):
 
 
 def establish_secret(secret, secrets_dir, keystore, infile=None, decrypt=False):
-    """ Will figure out a way to establish the filename where the secret is stored.
+    """Will figure out a way to establish the filename where the secret is stored.
 
     During encryption, the secret can either be passed in by the user (`--secret`) or just
     randomly created (`create_secret_filename()`).
@@ -117,7 +117,7 @@ def establish_secret(secret, secrets_dir, keystore, infile=None, decrypt=False):
 
 
 def parse_args():
-    """ Parse command line arguments and returns a configuration object.
+    """Parse command line arguments and returns a configuration object.
 
     :return the configuration object, arguments accessed via dotted notation
     :rtype Namespace
@@ -128,52 +128,74 @@ def parse_args():
         dest="conf_file",
         default=FILECRYPT_CONF_YML,
         help="The location of the YAML configuration file, if different from "
-             "the default {}.".format(FILECRYPT_CONF_YML),
+        "the default {}.".format(FILECRYPT_CONF_YML),
     )
-
     parser.add_argument(
-        "-k",
-        "--keep",
-        action="store_true",
-        help="Keep the plaintext file. Overriddes the 'shred' option in the " "configuration YAML.",
+        "-d",
+        dest="encrypt",
+        action="store_false",
+        help="If specified, the `infile` will be decrypted, using the encrypted --secret",
     )
-
-    parser.add_argument(
-        "-o",
-        "--out",
-        help="The output file, overrides the default naming and the location "
-             "defined in the YAML configuration file.",
-    )
-
-    parser.add_argument(
-        "-p",
-        "--pubkey",
-        help="Only used for the encrypt_send command, to specify a Public key "
-             "shared by the recipient; otherwise ignored.",
-    )
-
-    parser.add_argument(
-        "-s",
-        "--secret",
-        help="The full path of the ENCRYPTED passphrase to use to encrypt the "
-             "file; it will be left unmodified on disk.",
-    )
-
     parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         help="If specified, the destination file will be overwritten if it " "already exists.",
     )
-
-    parser.add_argument("infile", help="The file that will be securely encrypted or decrypted.")
+    parser.add_argument(
+        "-k",
+        "--keep",
+        action="store_true",
+        help="Keep the plaintext file. Overriddes the 'shred' option in the " "configuration YAML.",
+    )
+    parser.add_argument(
+        "-o",
+        "--out",
+        help="The output file, overrides the default naming and the location "
+        "defined in the YAML configuration file.",
+    )
+    parser.add_argument(
+        "-p",
+        "--pubkey",
+        help="Only used for the encrypt_send command, to specify a Public key "
+        "shared by the recipient; otherwise ignored.",
+    )
+    parser.add_argument(
+        "-s",
+        "--secret",
+        help="The full path of the ENCRYPTED passphrase to use to encrypt the "
+        "file; it will be left unmodified on disk.",
+    )
+    parser.add_argument(
+        "--send",
+        action="store_true",
+        help="If specified, the plaintext `infile` will be encrypted and an encrypted"
+        "passphrase (the 'secret') will be generated, using the --pubkey (which is"
+        "required).",
+    )
+    parser.add_argument(
+        "-v",
+        dest="debug",
+        action="store_true",
+        help="If specified, and an error occurs, the full stacktrace is printed; "
+        "also, logging is set in DEBUG mode.",
+    )
+    parser.add_argument(
+        "--version", action="store_true", help="Prints the version of the binary build and exits"
+    )
+    parser.add_argument(
+        "infile", nargs="?", help="The file that will be securely encrypted or decrypted, required"
+    )
     return parser.parse_args()
 
 
-def encrypt(cfg, should_encrypt=True):
+def encrypt(cfg):
     enc_cfg = EncryptConfiguration(conf_file=cfg.conf_file)
     if cfg.keep:
         enc_cfg.shred = False
+
+    if cfg.debug:
+        enc_cfg.log.setLevel(logging.DEBUG)
 
     keys = Keypair(private=enc_cfg.private, public=enc_cfg.public)
     enc_cfg.log.info("Using key pair: %s", keys)
@@ -183,7 +205,7 @@ def encrypt(cfg, should_encrypt=True):
     # The secret can be defined in several ways, depending also if it's an encryption or
     # decryption that is required, etc. - best left to a specialized method.
     secret = establish_secret(
-        cfg.secret, enc_cfg.secrets_dir, keystore, cfg.infile, not should_encrypt
+        cfg.secret, enc_cfg.secrets_dir, keystore, cfg.infile, not cfg.encrypt
     )
     if not secret:
         raise RuntimeError(
@@ -199,9 +221,8 @@ def encrypt(cfg, should_encrypt=True):
     if cfg.out:
         enc_cfg.out = None
 
-    plaintext = cfg.infile if should_encrypt else cfg.out
-    encrypted = cfg.out if should_encrypt else cfg.infile
-
+    should_encrypt = cfg.encrypt
+    plaintext, encrypted = (cfg.infile, cfg.out) if should_encrypt else (cfg.out, cfg.infile)
     encryptor = FileCrypto(
         encrypt=should_encrypt,
         secret=passphrase,
@@ -224,18 +245,18 @@ def encrypt(cfg, should_encrypt=True):
 
 
 def encrypt_to_send(file_to_encrypt, pubkey, dest=None):
-    """ Encrypts a file to be sent to another party who shared their Public key.
+    """Encrypts a file to be sent to another party who shared their Public key.
 
     :param file_to_encrypt: the name of the file to encrypt; **must exist** and will be left
         unchanged.
     :type file_to_encrypt: str
 
-    :param pubkey: the name of the file containing a suitable Public Key to use with OpenSSH.
+    :param pubkey: the name of the file containing a suitable Public Key to use with OpenSSL.
     :type pubkey: str
 
     :param dest: it can be any of: (a) an existing directory (in which case, the encrypted
         file will have the same name as the `file_to_encrypt` and extension `.enc`); or (b)
-        a relative or absolute path to a not-yet-existing file, which will be the encripted
+        a relative or absolute path to a not-yet-existing file, which will be the encrypted
         file; or (c) `None`, in which case the encrypted file will be in the current directory
         and named as the plaintext, with extension `.enc`.
         Passing just a filename, will create it in the current directory.
@@ -272,41 +293,31 @@ def encrypt_to_send(file_to_encrypt, pubkey, dest=None):
     return dest, secret, os.path.join(dest, outfile)
 
 
-def entrypoint(should_encrypt):
-    """ Entry-point script for execution"""
-    check_version()
+def entrypoint():
+    """Entry-point script to drive encryption/decryption.
+
+    This method is invoked by all the various console scripts (see `setup.py`) and by
+    the `zipapp` executable archive (see `filecrypt()` below).
+    """
+    config = None
     try:
+        check_version()
         config = parse_args()
-        encrypt(config, should_encrypt=should_encrypt)
+        if config.version:
+            print(f"File Encryption Utilities (crytto) Version {__version__}")
+            exit(0)
+        if not config.infile:
+            raise ValueError("The name of the file to encrypt/decrypt is required")
+        if config.send:
+            if not config.pubkey:
+                raise ValueError("A valid Public key must be defined using the --pubkey option")
+            _, secret, enc_file = encrypt_to_send(config.infile, config.pubkey, config.out)
+            print(f"File {config.infile} encrypted to {enc_file} - encryption key in: {secret}")
+        else:
+            encrypt(config)
     except Exception as ex:
         print("[ERROR] Could not complete execution:", ex)
-        exit(1)
-
-
-def encrypt_cmd():
-    """ Console entry point for the `encrypt` command."""
-    entrypoint(True)
-
-
-def decrypt_cmd():
-    """" Console entry point for the `decrypt` command."""
-    entrypoint(False)
-
-
-def send_cmd():
-    """ Encrypts a file to be sent to a remote recipient."""
-    check_version()
-    try:
-        config = parse_args()
-        if not config.pubkey:
-            print("[ERROR] A valid Public key must be defined using the --pubkey option")
-            exit(1)
-        dest, secret, enc_file = encrypt_to_send(config.infile, config.pubkey, config.out)
-        print(
-            "File {plain} encrypted to {enc} - encryption key in: {secret}".format(
-                plain=config.infile, enc=enc_file, secret=secret
-            )
-        )
-    except Exception as ex:
-        print("[ERROR] Could not complete execution:", ex)
+        if config and config.debug:
+            _, _, tb = sys.exc_info()
+            traceback.print_tb(tb)
         exit(1)
