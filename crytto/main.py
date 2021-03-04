@@ -321,3 +321,7 @@ def entrypoint():
             _, _, tb = sys.exc_info()
             traceback.print_tb(tb)
         exit(1)
+
+
+if __name__ == "__main__":
+    entrypoint()
