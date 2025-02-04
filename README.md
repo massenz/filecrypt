@@ -1,12 +1,11 @@
 
 # filecrypt - OpenSSL file encryption
 
-Author  | [M. Massenzio](http://codetrips.com)
- -------|-----------
-Version | 0.7.2
-Updated | 2020-04-30
-Code    | [bitbucket.org](https://bitbucket.org/marco/filecrypt)
-
+| Author  | [M. Massenzio](http://codetrips.com)                   |
+|---------|--------------------------------------------------------|
+| Version | 0.7.2                                                  |
+| Updated | 2020-04-30                                             |
+| Code    | [bitbucket.org](https://bitbucket.org/marco/filecrypt) |
 
 # overview
 

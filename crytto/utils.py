@@ -122,13 +122,13 @@ class SelfDestructKey(object):
         self.key_pair = keypair
         if not os.path.exists(encrypted_key):
             openssl("rand", "-out", self._plaintext, "32")
+            self._save()
         else:
             with open(encrypted_key, "rb") as secret:
                 openssl(
                     "rsautl",
                     "-decrypt",
-                    "-inkey",
-                    keypair.private,
+                    "-inkey", self.key_pair.private,
                     _in=secret,
                     _out=self._plaintext,
                 )

@@ -37,7 +37,7 @@ trap finish EXIT
 
 export PYTHONPATH="${BASEDIR}:${PYTHONPATH:-}"
 
-nosetests ${BASEDIR}/tests
+pytest ${BASEDIR}/tests
 
 cd ${BASEDIR}
 touch /tmp/keys.csv
