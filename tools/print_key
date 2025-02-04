@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+#
+# Python script to read a binary file and print its contents in hex format
+import os
+import sys
+
+def print_file_in_hex(file_path):
+    """Prints the contents of the key file in hex."""
+    with open(file_path, 'rb') as file:
+        content = file.read()
+        hex_content = content.hex().upper()
+        for i in range(0, len(hex_content), 80):
+            print(hex_content[i:i+80])
+
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {os.path.basename(sys.argv[0])} <file_path>")
+        sys.exit(1)
+
+    file_path = sys.argv[1]
+    print_file_in_hex(file_path)
+
+if __name__ == "__main__":
+    main()

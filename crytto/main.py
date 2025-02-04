@@ -202,7 +202,7 @@ def encrypt(cfg):
 
     keystore = KeystoreManager(enc_cfg.store)
 
-    # The secret can be defined in several ways, depending also if it's an encryption or
+    # The secret can be defined in several ways, depending on whether it's an encryption or
     # decryption that is required, etc. - best left to a specialized method.
     secret = establish_secret(
         cfg.secret, enc_cfg.secrets_dir, keystore, cfg.infile, not cfg.encrypt
@@ -233,15 +233,19 @@ def encrypt(cfg):
         log=enc_cfg.log,
     )
     encryptor()
+    # Delete the key here to avoid calling the __del__() method at exit, which causes issues.
+    del passphrase
     enc_cfg.log.info("'%s' completed", "Encryption" if should_encrypt else "Decryption")
 
     if should_encrypt:
-        if enc_cfg.shred:
-            enc_cfg.log.warning("Securely destroying %s", plaintext)
-            shred(plaintext)
         enc_cfg.log.info("Encryption successful; saving data to store file '%s'.", enc_cfg.store)
         entry = KeystoreEntry(os.path.abspath(secret), os.path.abspath(encryptor.outfile))
         keystore.add_entry(entry)
+        if enc_cfg.shred:
+            enc_cfg.log.warning("Securely destroying %s", plaintext)
+            shred(plaintext)
+    else:
+        enc_cfg.log.info(f"Successfully decrypted {encrypted} to {plaintext}")
 
 
 def encrypt_to_send(file_to_encrypt, pubkey, dest=None):

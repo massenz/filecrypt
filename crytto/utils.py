@@ -156,7 +156,7 @@ class SelfDestructKey(object):
                 "Error running: `{cmd}`\n"
                 "The error was: {err}\n"
                 "We could not shred the plaintext passphrase in file '{plain}' or encrypt it "
-                "to file {enc}.  You will have to securely delete the plaintext "
+                "to file {enc}.\n\nYou will have to securely delete the plaintext "
                 "version using something like `shred -uz {plain}`.".format(
                     plain=self._plaintext,
                     enc=self.encrypted,
