@@ -32,7 +32,7 @@ class KeystoreManagerTests(common.TestBase):
 
     def test_fails_with_nofile(self):
         with self.assertRaises(FileNotFoundError):
-            store = KeystoreManager("/foo/bar")
+            KeystoreManager("/foo/bar")
 
     def test_add_entry(self):
         new_entry = KeystoreEntry(secret="/tmp/secret.enc", encrypted="/tmp/plain.txt.enc")

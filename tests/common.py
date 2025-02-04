@@ -13,7 +13,7 @@ class TestBase(unittest.TestCase):
 
     @staticmethod
     def temp_filename(suffix=None):
-        """ Returns a valid, but non-existent temporary file name."""
+        """Returns a valid, but non-existent temporary file name."""
         filename = tempfile.mkstemp(suffix=suffix)[1]
         if os.path.exists(filename):
             os.remove(filename)

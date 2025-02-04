@@ -1,11 +1,11 @@
 
 # filecrypt - OpenSSL file encryption
 
-| Author  | [M. Massenzio](http://codetrips.com)                   |
-|---------|--------------------------------------------------------|
-| Version | 0.7.2                                                  |
-| Updated | 2020-04-30                                             |
-| Code    | [bitbucket.org](https://bitbucket.org/marco/filecrypt) |
+| Author  | [M. Massenzio](http://codetrips.com)                      |
+|---------|-----------------------------------------------------------|
+| Version | 0.7.4                                                     |
+| Updated | 2025-02-03                                                |
+| Code    | [massenz/filecrypt](https://github.com/massenz/filecrypt) |
 
 # overview
 
@@ -27,13 +27,11 @@ This requires OpenSSL to be installed on your machine:
 
     sudo apt-get install openssl
 
-Alternatively, clone the project from github and follow the instructions below:
+Alternatively, clone the project from GitHub and follow the instructions below:
 
-    git clone git@bitbucket.org:marco/filecrypt.git
+    git clone git@github.com:massenz/filecrypt.git
 
-Once cloned, you can try out functionality by packaging it as a self-contained executable: use
-the `package.sh` script to generate a `filecrypt.pyz` self-extracting executable in the `dist/` folder
- and then you can encrypt/decrpyt files (see the [configuration](#configuration) section first).
+Once cloned, you can try out functionality by packaging it as a self-contained executable: use the `package.sh` script to generate a `filecrypt.pyz` self-extracting executable in the `dist/` folder, and then you can encrypt/decrypt files (see the [configuration](#configuration) section first).
 
 ```
 # To encrypt
@@ -89,33 +87,25 @@ logging:
 
 ```
 
-The `private`/`public` keys are a key-pair generated using the `openssl genrsa` command; the
-encryption key used to actually encrypt the file will be created in the `secrets` folder,
-and afterward encrypted using the `public` key and stored in the location provided.
+The `private`/`public` keys are a key-pair generated using the `openssl genrsa` command; the encryption key used to actually encrypt the file will be created in the `secrets` folder, and afterward encrypted using the `public` key and stored in the location provided.
 
-The name will be `pass-key-nnnn.enc`, where `nnnn` will be a random value between `1000` and
-`9999`, that has not been already used for a file in that folder.
+The name will be `pass-key-nnnn.enc`, where `nnnn` will be a random value between `1000` and `9999`, that has not been already used for a file in that folder.
 
-The name of the secret passphrase can also be defined by the user, using the `--secret` option
-(it will be left unmodified):
+The name of the secret passphrase can also be defined by the user, using the `--secret` option (it will be left unmodified):
 
-* if it does not exist a random secure one will be created, used for encryption,
-  then encrypted and saved with the given path, while the plain-text temporary version securely
-  destroyed; OR
+* if it does not exist a random secure one will be created, used for encryption, then encrypted and saved with the given path, while the plain-text temporary version securely destroyed; OR
 
-* if it is the name of an already existing file, it will be decrypted, used to encrypt the file,
-  then left __unchanged__ on disk.
+* if it is the name of an already existing file, it will be decrypted, used to encrypt the file, then left __unchanged__ on disk.
 
 **NOTE** we recommend NOT to re-use encryption passphrases, but always generate a new secret.
 
-**NOTE** it is currently not possible to specify a plain-text passphrase: we always assume that
-the given file has been encrypted using the `private` key.
+**NOTE** it is currently not possible to specify a plain-text passphrase: we always assume that the given file has been encrypted using the `private` key.
 
 
 The `store` file is a CSV list of:
 
 ```
-"Original archive","Encryption key","Encrypted archive"
+"Original archive name","Full Path to Encryption key"
 201511_data.tar.gz,/opt/store/pass-key-001.enc,201511_data.tar.gz.enc
 ```
 
@@ -125,8 +115,7 @@ a new line will be appended at the end; any comments will be left unchanged.
 
 ### keypair generation
 
-We do not provide the means to generate them (this will be done at a later stage), but for now
-they can be generated using:
+We do not provide the means to generate them (this will be done at a later stage), but for now they can be generated using:
 
     openssl genrsa -out ./key.pem 2048
     openssl rsa -in key.pem -out key.pub -outform PEM -pubout
@@ -194,16 +183,11 @@ store: keys.csv
 ```
 and derive the location of the encryption key from the entry, if one is found.
 
-Please note that __only the filename is used to lookup the key__ and so two **encrypted**
-filenames in different directories but with the same name will be assumed to have been encrypted
-with the same `passphrase`.
+Please note that __only the filename is used to lookup the key__ and so two **encrypted** filenames in different directories but with the same name will be assumed to have been encrypted with the same `passphrase`.
 
-The `passphrase` file, is stored with its full path: if you move the keys, or rename any of
-the folder in their path, you will have to update the `keystore` (or use the `-s` flag when
-decrypting).
+The `passphrase` file, is stored with its full path: if you move the keys, or rename any of the folder in their path, you will have to update the `keystore` (or use the `-s` flag when decrypting).
 
-As with encryption, the `--out` flag can be used to specify the output file; otherwise,
-the current directory will be used.
+As with encryption, the `--out` flag can be used to specify the output file; otherwise, the current directory will be used.
 
 The encrypted file will be left untouched: the `--keep` flag _may_ be used, but will have no effect and the value of the `shred:` option will be ignored.
 

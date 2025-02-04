@@ -2,6 +2,8 @@
 #
 # Required dependencies (development).
 
+black
+flake8
 pytest
 PyYAML
 sh

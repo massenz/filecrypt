@@ -26,8 +26,6 @@ import yaml
 
 from sh import openssl, ErrorReturnCode, shred as _shred
 
-from crytto import BACKUP_EXT
-
 
 class EncryptConfiguration(object):
 
@@ -128,7 +126,8 @@ class SelfDestructKey(object):
                 openssl(
                     "rsautl",
                     "-decrypt",
-                    "-inkey", self.key_pair.private,
+                    "-inkey",
+                    self.key_pair.private,
                     _in=secret,
                     _out=self._plaintext,
                 )
@@ -167,7 +166,7 @@ class SelfDestructKey(object):
             )
 
     def _save(self):
-        """ Encrypts the contents of the key and writes it out to disk. """
+        """Encrypts the contents of the key and writes it out to disk."""
         if not os.path.exists(self.key_pair.public):
             raise RuntimeError("Encryption key file '%s' not found" % self.key_pair.public)
         with open(self._plaintext, "rb") as selfkey:
@@ -251,9 +250,8 @@ class KeystoreManager(object):
         if self._filestore.exists():
             self._filestore.rename(self.filestore + ".bak")
         with self._filestore.open("wt") as store:
-            store.write(f"# Crytto keystore file\n")
-            store.write(f"# Created at {d.isoformat(d.now())}\n")
-            store.write(f"#\n")
+            store.write("# Crytto keystore file\n")
+            store.write(f"# Created at {d.isoformat(d.now())}\n#\n")
             writer = csv.writer(store, lineterminator="\n")
             for k, v in self._data.items():
                 writer.writerow((k, v))

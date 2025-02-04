@@ -119,7 +119,7 @@ class FileCrypto(object):
             raise RuntimeError("Cannot process {}: {}".format(self.plain_file, err_msg))
 
     def __call__(self, *args, **kwargs):
-        """ Makes a `FileCrypto` a callable object and executes encryption/decryption."""
+        """Makes a `FileCrypto` a callable object and executes encryption/decryption."""
         self._check()
         action = "encryption" if self.encrypt else "decryption"
         try:

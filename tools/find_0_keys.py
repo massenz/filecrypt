@@ -11,7 +11,7 @@ This is a utility script performs the following tasks:
     3. Filters the archive/key pairs to only include those corresponding to actual archive files.
     4. Identifies zero-byte key files.
     5. Moves obsolete key files to a backup directory.
-    
+
 This is not part of the `crytto` package, and is not installed with it.
 """
 # File paths
@@ -32,16 +32,13 @@ KEYFILE = os.path.join(KEYS_DIRECTORY, "keys.csv")
 # Full path to backup CSV file
 KEYFILE_BACKUP = os.path.join(BACKUP_DIRECTORY, "keys.csv.bak")
 
-# Ensure the backup directory exists
-os.makedirs(BACKUP_DIRECTORY, exist_ok=True)
-
 
 # Read CSV and create a list of (archive, key) pairs
 def parse_csv(file_path: str) -> List[Tuple[str, str]]:
     pairs = []
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)  # Return empty list if CSV doesn't exist
-    with open(file_path, newline='') as csvfile:
+    with open(file_path, newline="") as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if len(row) == 2:
@@ -55,8 +52,9 @@ def get_existing_files(directory: str) -> set:
 
 
 # Filter (archive, key) pairs corresponding to actual snap files
-def filter_valid_key_pairs(existing_files: Set[str], pairs: List[Tuple[str, str]]) -> List[
-    Tuple[str, str]]:
+def filter_valid_key_pairs(
+    existing_files: Set[str], pairs: List[Tuple[str, str]]
+) -> List[Tuple[str, str]]:
     return [(archive, key) for archive, key in pairs if archive in existing_files]
 
 
@@ -67,12 +65,16 @@ def find_zero_size_files(key_pairs: List[Tuple[str, str]]) -> List[Tuple[str, st
     :param key_pairs: List of (archive, key) pairs.
     :return: List of (archive, key) pairs where the key file is zero-byte.
     """
-    return [(archive, key) for archive, key in key_pairs if
-            os.path.exists(key) and os.path.getsize(key) == 0]
+    return [
+        (archive, key)
+        for archive, key in key_pairs
+        if os.path.exists(key) and os.path.getsize(key) == 0
+    ]
 
 
-def move_obsolete_keys(keys_dir: str, valid_pairs: List[Tuple[str, str]], backup_dir: str) -> List[
-    str]:
+def move_obsolete_keys(
+    keys_dir: str, valid_pairs: List[Tuple[str, str]], backup_dir: str
+) -> List[str]:
     """Moves all keys in keys_dir to backup_dir if they are not in the valid_pairs list.
 
     :param valid_pairs: contains a list of (archive, key path) pairs.
@@ -100,7 +102,7 @@ def move_obsolete_keys(keys_dir: str, valid_pairs: List[Tuple[str, str]], backup
 def save_updated_pairs(pairs: List[Tuple[str, str]], original_csv: str, backup_csv: str) -> None:
     if os.path.exists(original_csv):
         shutil.move(original_csv, backup_csv)  # Backup old CSV
-    with open(original_csv, "w", newline='') as csvfile:
+    with open(original_csv, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(pairs)
 
@@ -121,16 +123,26 @@ def update_keys() -> None:
     final_pairs = [pair for pair in valid_pairs if pair not in zero_byte_files]
 
     # Move obsolete keys to a backup folder.
+    # Ensure the backup directory exists
+    os.makedirs(BACKUP_DIRECTORY, exist_ok=True)
     moved_keys: List[str] = move_obsolete_keys(KEYS_DIRECTORY, valid_pairs, BACKUP_DIRECTORY)
 
     # Save updated pairs
     save_updated_pairs(final_pairs, KEYFILE, KEYFILE_BACKUP)
 
     # Print results
-    print("\nZero-byte key files:") if len(zero_byte_files) > 0 else print("\nNo zero-byte key files found.")
+    (
+        print("\nZero-byte key files:")
+        if len(zero_byte_files) > 0
+        else (print("\nNo zero-byte key files found."))
+    )
     for archive, key in zero_byte_files:
         print(f"Archive: {archive} → Zero-byte key file: {key}")
-    print("\nMoved obsolete key files to backup:") if len(moved_keys) > 0 else print("\nNo obsolete key files moved.")
+    (
+        print("\nMoved obsolete key files to backup:")
+        if len(moved_keys) > 0
+        else (print("\nNo obsolete key files moved."))
+    )
     for i, key in enumerate(moved_keys):
         print(f"Moved: {key}")
 

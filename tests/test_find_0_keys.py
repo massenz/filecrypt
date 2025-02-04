@@ -1,6 +1,5 @@
 import csv
 import unittest
-from unittest.mock import patch, mock_open, MagicMock
 import os
 import tempfile
 import shutil
@@ -29,22 +28,22 @@ class TestKeyProcessing(unittest.TestCase):
         # Create test archive files
         self.snapshots = ["snap1.tar.gz", "snap2.tar.gz"]
         for snap in self.snapshots:
-            open(os.path.join(self.test_snap_dir, snap), 'w').close()
+            open(os.path.join(self.test_snap_dir, snap), "w").close()
 
         # Create test key files
         self.keys = {
             "snap1.tar.gz": os.path.join(self.test_keys_dir, "key1.enc"),
             "snap2.tar.gz": os.path.join(self.test_keys_dir, "key2.enc"),
-            "missing.tar.gz": os.path.join(self.test_keys_dir, "key_missing.enc")
+            "missing.tar.gz": os.path.join(self.test_keys_dir, "key_missing.enc"),
         }
 
         # Write key files
         for key_path in self.keys.values():
-            with open(key_path, 'w') as f:
+            with open(key_path, "w") as f:
                 f.write("test")
 
         # Write CSV
-        with open(self.csv_file, "w", newline='') as csvfile:
+        with open(self.csv_file, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             for snap, key in self.keys.items():
                 writer.writerow([snap, key])
@@ -72,7 +71,7 @@ class TestKeyProcessing(unittest.TestCase):
     def test_find_zero_size_files(self):
         """Ensure zero-byte key files are detected."""
         # Make one key file zero-size
-        open(self.keys["snap2.tar.gz"], 'w').close()
+        open(self.keys["snap2.tar.gz"], "w").close()
 
         pairs = [(snap, key) for snap, key in self.keys.items() if os.path.exists(key)]
         zero_files = find_zero_size_files(pairs)
@@ -91,5 +90,5 @@ class TestKeyProcessing(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.backup_dir, "key_missing.enc")))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
